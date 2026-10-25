@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Radar de Ganhos</string>
+    <string name="service_label">Radar de Ganhos — leitura de tela</string>
+    <string name="service_description">Lê o card de corrida do Uber/99 (ou qualquer imagem na tela) para calcular R$/hora e R$/km líquidos. Nada sai do aparelho.</string>
+</resources>

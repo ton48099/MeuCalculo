@@ -1,0 +1,466 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="18dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Radar de Ganhos"
+            android:textColor="@color/text"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:lineSpacingExtra="2dp"
+            android:text="Calcule R$/hora e R$/km líquidos de qualquer card do Uber ou 99 — inclusive foto, print ou post. A leitura acontece no próprio aparelho."
+            android:textColor="@color/textDim"
+            android:textSize="12.5sp" />
+
+        <!-- PASSO 1 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1 · LIBERAR A LEITURA DE TELA"
+                android:textColor="@color/green"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:lineSpacingExtra="2dp"
+                android:text="Serviço desativado."
+                android:textColor="@color/textDim"
+                android:textSize="12.5sp" />
+
+            <TextView
+                android:id="@+id/btnAcessibilidade"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_btn_primary"
+                android:gravity="center"
+                android:padding="12dp"
+                android:text="Abrir Acessibilidade e ativar"
+                android:textColor="@color/green"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Ajustes › Acessibilidade › Apps instalados › Radar de Ganhos › Ativar. O botão flutuante R$ aparece por cima de qualquer app."
+                android:textColor="@color/textDim"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- CUSTOS -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2 · CUSTOS DO SEU CARRO"
+                android:textColor="@color/blue"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Preço do litro (R$)" />
+                    <EditText
+                        android:id="@+id/etPreco"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_field"
+                        android:inputType="numberDecimal"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Consumo (km por litro)" />
+                    <EditText
+                        android:id="@+id/etConsumo"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_field"
+                        android:inputType="numberDecimal"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Manutenção (R$/km)" />
+                    <EditText
+                        android:id="@+id/etManut"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_field"
+                        android:inputType="numberDecimal"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Comissão do app (%)" />
+                    <EditText
+                        android:id="@+id/etComissao"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_field"
+                        android:inputType="numberDecimal"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Aluguel/fixo (R$/hora)" />
+                    <EditText
+                        android:id="@+id/etFixoHora"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_field"
+                        android:inputType="numberDecimal"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Espera extra (min)" />
+                    <EditText
+                        android:id="@+id/etEspera"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_field"
+                        android:inputType="numberDecimal"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Retorno extra (%)" />
+                    <EditText
+                        android:id="@+id/etRetorno"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_field"
+                        android:inputType="numberDecimal"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Meta R$/km líquido" />
+                    <EditText
+                        android:id="@+id/etMetaKm"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_field"
+                        android:inputType="numberDecimal"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Meta R$/hora líquido" />
+                    <EditText
+                        android:id="@+id/etMetaHora"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_field"
+                        android:inputType="numberDecimal"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Auto-análise no Uber/99" />
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/swAuto"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_field"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="6dp"
+                        android:text="Ligado"
+                        android:textColor="@color/textDim"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/btnSalvar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_btn_primary"
+                android:gravity="center"
+                android:padding="12dp"
+                android:text="Salvar configurações"
+                android:textColor="@color/green"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- TESTE -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="3 · TESTAR O CÁLCULO"
+                android:textColor="@color/yellow"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Sem o botão flutuante? Analise uma foto do card salva na galeria ou cole o texto da corrida."
+                android:textColor="@color/textDim"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/btnGaleria"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_btn_ghost"
+                android:gravity="center"
+                android:padding="12dp"
+                android:text="🖼  Analisar foto da galeria"
+                android:textColor="@color/text"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/etTextoLivre"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_field"
+                android:gravity="top"
+                android:hint="Cole aqui o texto do card. Ex.: R$ 24,90 · 5 min (1,2 km) de distância · Viagem de 18 min (7,4 km)"
+                android:inputType="textMultiLine"
+                android:minLines="3"
+                android:padding="10dp"
+                android:textColor="@color/text"
+                android:textColorHint="@color/textDim"
+                android:textSize="12.5sp" />
+
+            <TextView
+                android:id="@+id/btnCalcularTexto"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_btn_ghost"
+                android:gravity="center"
+                android:padding="12dp"
+                android:text="Calcular este texto"
+                android:textColor="@color/text"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvResultado"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_field"
+                android:lineSpacingExtra="3dp"
+                android:padding="12dp"
+                android:text="O resultado aparece aqui."
+                android:textColor="@color/textDim"
+                android:textSize="12.5sp" />
+        </LinearLayout>
+
+        <!-- AJUDA -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="COMO USAR NO DIA A DIA"
+                android:textColor="@color/textDim"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:lineSpacingExtra="4dp"
+                android:text="1. Abra o Uber ou o 99 normalmente.\n2. Quando o card da corrida aparecer, toque no botão flutuante R$.\n3. Em 1 a 2 segundos o painel mostra o R$/hora e o R$/km já descontando combustível, manutenção e comissão.\n\nFunciona também em foto, print, conversa de WhatsApp ou post do Facebook: abra a imagem na tela e toque no R$.\n\nVerde = acima da meta. Amarelo = perto da meta. Vermelho = abaixo — a corrida não paga o custo."
+                android:textColor="@color/text"
+                android:textSize="12.5sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Privacidade: o OCR roda no próprio celular. O app não tem servidor: nenhuma captura de tela é enviada ou armazenada."
+                android:textColor="@color/textDim"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
