@@ -16,7 +16,11 @@ data class RideCard(
     /** "Taxa de deslocamento" que a 99 mostra separada — informativa, não somada. */
     val taxaDeslocamento: Double?,
     val avisos: List<String>,
-    val textoOriginal: String
+    val textoOriginal: String,
+    /** Endereço de busca do passageiro, quando o card mostra. */
+    val origem: String? = null,
+    /** Endereço de desembarque, quando o card mostra. */
+    val destino: String? = null
 ) {
     val kmTotal: Double get() = kmDeslocamento + kmViagem
     val minTotal: Double get() = minDeslocamento + minViagem
@@ -110,6 +114,9 @@ object RideParser {
         var kmVia = 0.0
         var minVia = 0.0
 
+        // Endereços precisam das quebras de linha do texto original.
+        val enderecos = extractAddresses(raw)
+
         when {
             pares.size >= 2 -> {
                 // Primeiro par = deslocamento até o passageiro, segundo = viagem.
@@ -159,11 +166,106 @@ object RideParser {
             precoPorKmApp = precoPorKm,
             taxaDeslocamento = taxa,
             avisos = avisos,
-            textoOriginal = raw
+            textoOriginal = raw,
+            origem = enderecos.first,
+            destino = enderecos.second
         )
 
         if (card.kmTotal < 0.2) return null
         return card
+    }
+
+    // ---- Endereços (origem e destino) -------------------------------------
+
+    private val minToken = Regex("""\d+\s*(?:min|mins|minuto|minutos|h|hr|hrs|hora|horas)\b""")
+    private val kmToken = Regex("""\d+(?:[.,]\d+)?\s*km\b""")
+    private val metrosToken = Regex("""\(\s*\d{2,5}\s*m\b""")
+
+    /** Linha do card que traz "tempo (distância)", como "5min (2,5km)". */
+    private fun isPairLine(linha: String): Boolean =
+        minToken.containsMatchIn(linha) && (kmToken.containsMatchIn(linha) || metrosToken.containsMatchIn(linha))
+
+    private val paradasDeEndereco = listOf(
+        "aceitar", "recusar", "cancelar", "corrida", "distancia", "distância",
+        "viagem", "parada", "deslocamento", "km", "min", "r$", "taxa", "perfil",
+        "corridas", "verif", "incluso", "dinheiro", "longa", "risco", "avalia",
+        "nota", "passageiro", "concluir", "chegar", "tela", "app", "promo"
+    )
+
+    private val viasDeEndereco = listOf(
+        "rua", "r.", "av", "av.", "avenida", "alameda", "al.", "travessa", "tv.",
+        "rodovia", "estrada", "praça", "praca", "jardim", "vila", "parque", "bairro",
+        "centro", "shopping", "terminal", "aeroporto", "hospital", "estação", "estacao",
+        "universidade", "estádio", "estadio", "igreja", "mercado", "hotel"
+    )
+
+    /**
+     * Lê os endereços do card usando as linhas do texto do OCR: cada linha de
+     * "tempo (km)" vem seguida pelo endereço correspondente (Uber e 99 fazem assim).
+     * A primeira é a busca do passageiro; a segunda é o desembarque.
+     */
+    fun extractAddresses(raw: String): Pair<String?, String?> {
+        // Só o começo é limpo (bolinhas/ícones do card); reticências no fim são do endereço.
+        val linhas = raw.split('\n').map { it.trim().trimStart { ch -> !ch.isLetterOrDigit() }.trim() }
+            .filter { it.isNotEmpty() }
+        val achados = mutableListOf<String>()
+        for (i in linhas.indices) {
+            if (achados.size >= 2) break
+            if (!isPairLine(linhas[i].lowercase())) continue
+            collectAddress(linhas, i + 1)?.let { achados.add(it) }
+        }
+        return achados.getOrNull(0) to achados.getOrNull(1)
+    }
+
+    private fun collectAddress(linhas: List<String>, inicio: Int): String? {
+        val partes = mutableListOf<String>()
+        var i = inicio
+        var vazias = 0
+        while (i < linhas.size && partes.size < 3) {
+            val original = linhas[i]
+            val baixa = original.lowercase()
+            if (isPairLine(baixa)) break
+            when {
+                isAddressLine(baixa, original) ||
+                    (partes.isNotEmpty() && isContinuation(baixa, original)) -> {
+                    partes.add(original.trim().trimEnd(',', '-', '–').trim())
+                    vazias = 0
+                }
+                partes.isEmpty() -> {
+                    vazias++
+                    if (vazias > 2) break
+                }
+                else -> break
+            }
+            i++
+        }
+        if (partes.isEmpty()) return null
+        return partes.filter { it.isNotBlank() }.joinToString(", ")
+    }
+
+    /** Linha que parece um endereço completo (tem via, número ou vírgula). */
+    private fun isAddressLine(baixa: String, original: String): Boolean {
+        if (original.length < 5) return false
+        if (!original.any { it.isLetter() }) return false
+        if (temParada(baixa)) return false
+        if (Regex("""\d+\s*(?:min|h)\b""").containsMatchIn(baixa)) return false
+        val temVia = viasDeEndereco.any { via ->
+            Regex("""(?:^|[^a-z])${Regex.escape(via)}(?:$|[^a-z])""").containsMatchIn(baixa)
+        }
+        return temVia || baixa.contains(",") || Regex("""\d{1,5}\s*-\s*[a-z]{2}\b""").containsMatchIn(baixa)
+    }
+
+    /** Complemento do endereço (bairro, cidade/UF) logo abaixo da linha principal. */
+    private fun isContinuation(baixa: String, original: String): Boolean {
+        if (original.length < 3) return false
+        if (!original.any { it.isLetter() }) return false
+        if (temParada(baixa)) return false
+        return !Regex("""\d+\s*(?:min|h)\b""").containsMatchIn(baixa)
+    }
+
+    /** Palavras que indicam linha de botão/aviso, não de endereço. */
+    private fun temParada(baixa: String): Boolean = paradasDeEndereco.any { p ->
+        Regex("""(?:^|[^a-z$])${Regex.escape(p)}(?:$|[^a-z])""").containsMatchIn(baixa)
     }
 
     private fun findPairs(text: String): List<Par> {

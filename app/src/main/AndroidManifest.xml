@@ -19,6 +19,12 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".HistoryActivity"
+            android:exported="false"
+            android:label="Histórico de corridas"
+            android:parentActivityName=".MainActivity" />
+
         <service
             android:name=".RideAccessibilityService"
             android:exported="true"

@@ -39,6 +39,47 @@ class LayoutInflationTest {
         assertNotNull(v.findViewById<View>(R.id.btnSalvar))
         assertNotNull(v.findViewById<View>(R.id.btnGaleria))
         assertNotNull(v.findViewById<View>(R.id.tvResultado))
+        // Limites de cor e histórico
+        assertNotNull(v.findViewById<View>(R.id.etHoraRuim))
+        assertNotNull(v.findViewById<View>(R.id.etHoraBoa))
+        assertNotNull(v.findViewById<View>(R.id.etKmRuim))
+        assertNotNull(v.findViewById<View>(R.id.etKmBoa))
+        assertNotNull(v.findViewById<View>(R.id.btnSalvarCores))
+        assertNotNull(v.findViewById<View>(R.id.tvHistoricoContagem))
+        assertNotNull(v.findViewById<View>(R.id.btnAbrirHistorico))
+    }
+
+    @Test
+    fun inflaTelaDeHistoricoEUmItem() {
+        val v = LayoutInflater.from(themed()).inflate(R.layout.activity_history, null)
+        assertNotNull(v.findViewById<View>(R.id.listaHistorico))
+        assertNotNull(v.findViewById<View>(R.id.tvHistoricoResumo))
+        assertNotNull(v.findViewById<View>(R.id.btnLimparHistorico))
+        assertNotNull(v.findViewById<View>(R.id.btnVoltar))
+
+        val item = LayoutInflater.from(themed()).inflate(R.layout.item_history, null)
+        assertNotNull(item.findViewById<View>(R.id.tvItemValor))
+        assertNotNull(item.findViewById<View>(R.id.tvItemHora))
+        assertNotNull(item.findViewById<View>(R.id.tvItemKm))
+        assertNotNull(item.findViewById<View>(R.id.tvItemOrigem))
+        assertNotNull(item.findViewById<View>(R.id.tvItemDestino))
+    }
+
+    @Test
+    fun limitesDeCorFicamSalvos() {
+        val ctx: Context = ApplicationProvider.getApplicationContext()
+        Prefs.save(ctx, Settings(horaRuimAte = 38.0, horaBoaDe = 50.0, kmRuimAte = 1.4, kmBoaDe = 2.0))
+        val lido = Prefs.load(ctx)
+        assertEquals(38.0, lido.horaRuimAte, 0.001)
+        assertEquals(50.0, lido.horaBoaDe, 0.001)
+        assertEquals(1.4, lido.kmRuimAte, 0.001)
+        assertEquals(2.0, lido.kmBoaDe, 0.001)
+        // Valores de fábrica (o que vem sem o motorista mexer).
+        val padrao = Settings()
+        assertEquals(35.0, padrao.horaRuimAte, 0.001)
+        assertEquals(45.0, padrao.horaBoaDe, 0.001)
+        assertEquals(1.30, padrao.kmRuimAte, 0.001)
+        assertEquals(1.80, padrao.kmBoaDe, 0.001)
     }
 
     @Test

@@ -42,12 +42,16 @@ object PanelBinder {
             append("%")
         }
 
-        // Quanto ESTA corrida gera por hora e por km (bruto, como o motorista vê no card).
+        // Quanto ESTA corrida gera por hora e por km (bruto, como o motorista vê no card),
+        // com o semáforo configurado: vermelho = ruim, branco = neutro, verde = bom.
         v.findViewById<TextView>(R.id.tvHora).apply {
             text = Report.money(a.brutoHora)
-            setTextColor(cor)
+            setTextColor(ColorRules.corHora(a.brutoHora, s))
         }
-        v.findViewById<TextView>(R.id.tvKm).text = Report.money(a.brutoKm) + "/km"
+        v.findViewById<TextView>(R.id.tvKm).apply {
+            text = Report.money(a.brutoKm) + "/km"
+            setTextColor(ColorRules.corKm(a.brutoKm, s))
+        }
         v.findViewById<TextView>(R.id.tvBruto).text = buildString {
             append("corrida ${Report.money(a.bruto)}")
             append(" · ${Report.km(a.card.kmTotal)}")

@@ -21,6 +21,14 @@ data class Settings(
     val metaKm: Double = 1.80,
     /** Meta de R$ líquido por hora. */
     val metaHora: Double = 30.0,
+    /** Até este R$/hora o valor fica vermelho (ruim). */
+    val horaRuimAte: Double = 35.0,
+    /** A partir deste R$/hora o valor fica verde (bom). */
+    val horaBoaDe: Double = 45.0,
+    /** Até este R$/km o valor fica vermelho (ruim). */
+    val kmRuimAte: Double = 1.30,
+    /** A partir deste R$/km o valor fica verde (bom). */
+    val kmBoaDe: Double = 1.80,
     /** Espera/parada extra lançada à mão, em minutos. */
     val esperaMin: Double = 0.0,
     /** Km de retorno extra em % do total (para voltar ao ponto forte). */
@@ -68,6 +76,10 @@ object Prefs {
             custoFixoHora = dbl("custoFixoHora", d.custoFixoHora),
             metaKm = dbl("metaKm", d.metaKm),
             metaHora = dbl("metaHora", d.metaHora),
+            horaRuimAte = dbl("horaRuimAte", d.horaRuimAte),
+            horaBoaDe = dbl("horaBoaDe", d.horaBoaDe),
+            kmRuimAte = dbl("kmRuimAte", d.kmRuimAte),
+            kmBoaDe = dbl("kmBoaDe", d.kmBoaDe),
             esperaMin = dbl("esperaMin", d.esperaMin),
             retornoPct = dbl("retornoPct", d.retornoPct),
             autoScan = p.getBoolean("autoScan", d.autoScan),
@@ -95,6 +107,10 @@ object Prefs {
             .putString("custoFixoHora", s.custoFixoHora.toString())
             .putString("metaKm", s.metaKm.toString())
             .putString("metaHora", s.metaHora.toString())
+            .putString("horaRuimAte", s.horaRuimAte.toString())
+            .putString("horaBoaDe", s.horaBoaDe.toString())
+            .putString("kmRuimAte", s.kmRuimAte.toString())
+            .putString("kmBoaDe", s.kmBoaDe.toString())
             .putString("esperaMin", s.esperaMin.toString())
             .putString("retornoPct", s.retornoPct.toString())
             .putBoolean("autoScan", s.autoScan)

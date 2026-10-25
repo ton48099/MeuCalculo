@@ -4,12 +4,12 @@ APK Android que lê o card de corrida do **Uber** e da **99** em qualquer tela (
 
 ## APK pronto
 
-`dist/RadarDeGanhos-1.1.apk` — 50 MB, assinado (esquema v2), Android 11+ (API 30).
-Instala por cima da 1.0, mantendo as configurações salvas.
+`dist/RadarDeGanhos-1.2.apk` — 50 MB, assinado (esquema v2), Android 11+ (API 30).
+Instala por cima da 1.1, mantendo as configurações salvas.
 
 ```
 pacote: com.radardeganhos.app
-versão: 1.1 (versionCode 2)
+versão: 1.2 (versionCode 3)
 ```
 
 ## Instalação
@@ -29,7 +29,7 @@ versão: 1.1 (versionCode 2)
 
 ## O que o painel mostra
 
-- **Gera por hora** e **por km nesta corrida** em destaque — os valores da oferta atual.
+- **Gera por hora** e **por km nesta corrida** em destaque — os valores da oferta atual, com semáforo de cor: **vermelho** = ruim, **branco** = neutro, **verde** = bom.
 - Logo abaixo, **lucro líquido da corrida**: `valor − custos`, com o líquido por hora e por km.
 - Trajeto: deslocamento até o cliente e viagem (km e tempo de cada um), km usado no custo.
 - Combustível, manutenção, comissão, custo fixo e custo total.
@@ -39,6 +39,15 @@ versão: 1.1 (versionCode 2)
 Todos os itens podem ser ligados/desligados individualmente nas configurações.
 
 Veredito: **ÓTIMA** (≥120% da meta) · **BOA** (≥100%) · **MÉDIA** (≥80%) · **RUIM** (<80%).
+
+### Cores do R$/hora e do R$/km
+
+| Métrica | Vermelho (ruim) | Branco (neutro) | Verde (bom) |
+|---|---|---|---|
+| R$/hora | até 35,00 | 35,01 a 44,99 | 45,00 ou mais |
+| R$/km | até 1,30 | 1,31 a 1,79 | 1,80 ou mais |
+
+Os quatro limites são editáveis na seção **4 · CORES** da tela do app (o padrão acima é o que vem de fábrica).
 
 ## Configurações (tela do app)
 
@@ -56,6 +65,18 @@ Veredito: **ÓTIMA** (≥120% da meta) · **BOA** (≥100%) · **MÉDIA** (≥80
 | Ficar na tela (s) | quanto tempo o card fica aberto; **0** = só fecha no ✕ |
 | Tamanho do card | Pequeno 0,85× · Normal 1× · Grande 1,15× · Extra 1,3× |
 | Itens do card | veredito, R$/hora, R$/km, valor/km/tempo, lucro líquido, custos, trajeto, meta, botão reler |
+| Limites de cor | R$/hora vermelho até / verde a partir de, R$/km vermelho até / verde a partir de |
+
+## Histórico de corridas
+
+Cada card analisado (botão flutuante, auto-análise ou teste de texto/foto) entra no **histórico**, na seção **5** da tela inicial. Cada item mostra:
+
+- valor total da corrida;
+- **R$/km** e **R$/hora**, pintados com as mesmas regras de cor do card;
+- **busca** (endereço de origem) e **desembarque** (endereço de destino), quando o card mostra o trajeto;
+- lucro líquido estimado, app de origem e data/hora da leitura.
+
+O topo resume a quantidade de corridas e as médias de R$/hora e R$/km. O histórico fica em `SharedPreferences` no próprio aparelho (até 300 corridas), sem servidor; o mesmo card lido duas vezes em até 2 minutos conta como uma só leitura, e o botão **Limpar histórico** apaga tudo.
 
 ## Cálculo
 
@@ -88,7 +109,7 @@ Requisitos: JDK 17, Android SDK 34, Gradle 8.7.
 ```bash
 echo "sdk.dir=/caminho/do/android-sdk" > local.properties
 gradle :app:assembleRelease      # gera app/build/outputs/apk/release/app-release.apk
-gradle :app:testDebugUnitTest    # 22 testes: parser, cálculo, card, toggles, auto-análise, inflação das telas
+gradle :app:testDebugUnitTest    # 37 testes: parser, cálculo, card, toggles, cores, endereços, histórico, auto-análise, inflação das telas
 ```
 
 Assinatura: `keystore/radar.jks`, alias `radar`, senha `radar2026` (definida em `app/build.gradle.kts`). Mantenha o mesmo keystore para atualizar o app no celular sem desinstalar.

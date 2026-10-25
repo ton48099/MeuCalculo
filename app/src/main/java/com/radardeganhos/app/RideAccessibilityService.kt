@@ -129,6 +129,8 @@ class RideAccessibilityService : AccessibilityService() {
                 lastCardSignature = signature
 
                 val analysis = Calculator.analyze(card, settings)
+                // Guarda no histórico (o mesmo card lido duas vezes não duplica).
+                RideHistory.record(this@RideAccessibilityService, analysis)
                 overlay?.showResult(analysis, settings)
             } catch (t: Throwable) {
                 overlay?.restoreAfterCapture()

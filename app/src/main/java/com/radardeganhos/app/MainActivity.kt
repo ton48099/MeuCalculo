@@ -30,6 +30,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var etRetorno: EditText
     private lateinit var etMetaKm: EditText
     private lateinit var etMetaHora: EditText
+    private lateinit var etHoraRuim: EditText
+    private lateinit var etHoraBoa: EditText
+    private lateinit var etKmRuim: EditText
+    private lateinit var etKmBoa: EditText
     private lateinit var swAuto: SwitchMaterial
     private lateinit var etCardDuracao: EditText
     private lateinit var etAutoIntervalo: EditText
@@ -48,6 +52,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swMeta: SwitchMaterial
     private lateinit var swReler: SwitchMaterial
     private lateinit var tvStatus: TextView
+    private lateinit var tvHistoricoContagem: TextView
     private lateinit var tvResultado: TextView
     private lateinit var etTextoLivre: EditText
 
@@ -72,6 +77,10 @@ class MainActivity : AppCompatActivity() {
         etRetorno = findViewById(R.id.etRetorno)
         etMetaKm = findViewById(R.id.etMetaKm)
         etMetaHora = findViewById(R.id.etMetaHora)
+        etHoraRuim = findViewById(R.id.etHoraRuim)
+        etHoraBoa = findViewById(R.id.etHoraBoa)
+        etKmRuim = findViewById(R.id.etKmRuim)
+        etKmBoa = findViewById(R.id.etKmBoa)
         swAuto = findViewById(R.id.swAuto)
         etCardDuracao = findViewById(R.id.etCardDuracao)
         etAutoIntervalo = findViewById(R.id.etAutoIntervalo)
@@ -90,6 +99,7 @@ class MainActivity : AppCompatActivity() {
         swMeta = findViewById(R.id.swMeta)
         swReler = findViewById(R.id.swReler)
         tvStatus = findViewById(R.id.tvStatus)
+        tvHistoricoContagem = findViewById(R.id.tvHistoricoContagem)
         tvResultado = findViewById(R.id.tvResultado)
         etTextoLivre = findViewById(R.id.etTextoLivre)
 
@@ -97,6 +107,11 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<TextView>(R.id.btnSalvar).setOnClickListener { salvar() }
         findViewById<TextView>(R.id.btnSalvarCard).setOnClickListener { salvar() }
+        findViewById<TextView>(R.id.btnSalvarCores).setOnClickListener { salvar() }
+
+        findViewById<TextView>(R.id.btnAbrirHistorico).setOnClickListener {
+            startActivity(Intent(this, HistoryActivity::class.java))
+        }
 
         findViewById<TextView>(R.id.btnAcessibilidade).setOnClickListener {
             runCatching { startActivity(Intent(AndroidSettings.ACTION_ACCESSIBILITY_SETTINGS)) }
@@ -118,6 +133,16 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateStatus()
+        atualizarHistorico()
+    }
+
+    private fun atualizarHistorico() {
+        val n = RideHistory.load(this).size
+        tvHistoricoContagem.text = if (n == 0) {
+            "Nenhuma corrida registrada ainda. Cada card analisado entra aqui com valor, R$/km, R$/hora e trajeto."
+        } else {
+            "$n corrida(s) registrada(s) neste aparelho. Cada uma com valor, R$/km, R$/hora, busca e desembarque."
+        }
     }
 
     private fun updateStatus() {
@@ -159,6 +184,10 @@ class MainActivity : AppCompatActivity() {
         etRetorno.setText(plain(s.retornoPct))
         etMetaKm.setText(plain(s.metaKm))
         etMetaHora.setText(plain(s.metaHora))
+        etHoraRuim.setText(plain(s.horaRuimAte))
+        etHoraBoa.setText(plain(s.horaBoaDe))
+        etKmRuim.setText(plain(s.kmRuimAte))
+        etKmBoa.setText(plain(s.kmBoaDe))
         swAuto.isChecked = s.autoScan
         etCardDuracao.setText(s.cardDuracaoSeg.toString())
         etAutoIntervalo.setText(s.autoIntervaloSeg.toString())
@@ -203,6 +232,10 @@ class MainActivity : AppCompatActivity() {
             custoFixoHora = v(etFixoHora, d.custoFixoHora),
             metaKm = v(etMetaKm, d.metaKm),
             metaHora = v(etMetaHora, d.metaHora),
+            horaRuimAte = v(etHoraRuim, d.horaRuimAte),
+            horaBoaDe = v(etHoraBoa, d.horaBoaDe),
+            kmRuimAte = v(etKmRuim, d.kmRuimAte),
+            kmBoaDe = v(etKmBoa, d.kmBoaDe),
             esperaMin = v(etEspera, d.esperaMin),
             retornoPct = v(etRetorno, d.retornoPct),
             autoScan = swAuto.isChecked,
@@ -229,7 +262,10 @@ class MainActivity : AppCompatActivity() {
             return
         }
         val settings = readForm()
-        tvResultado.text = Report.detalhado(Calculator.analyze(card, settings), settings)
+        val analysis = Calculator.analyze(card, settings)
+        RideHistory.record(this, analysis)
+        atualizarHistorico()
+        tvResultado.text = Report.detalhado(analysis, settings)
     }
 
     private fun analyzeImage(uri: Uri) {
