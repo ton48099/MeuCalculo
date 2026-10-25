@@ -114,8 +114,8 @@ object Report {
         val card = a.card
         val sb = StringBuilder()
         sb.append("${a.veredito.label}  ·  ${if (card.app != null) "card ${card.app}" else "leitura de tela"}\n\n")
-        sb.append("Líquido: ${money(a.liquidoHora)}/h  ·  ${money(a.liquidoKm)}/km\n")
-        sb.append("Bruto:   ${money(a.brutoHora)}/h  ·  ${money(a.brutoKm)}/km\n\n")
+        sb.append("Gera nesta corrida: ${money(a.brutoHora)}/h  ·  ${money(a.brutoKm)}/km\n")
+        sb.append("Lucro líquido: ${money(a.liquido)}  (${money(a.liquidoHora)}/h  ·  ${money(a.liquidoKm)}/km)\n\n")
         sb.append("Corrida: ${money(a.bruto)}\n")
         sb.append("Distância: ${km(card.kmTotal)} (${km(card.kmDeslocamento)} até o cliente + ${km(card.kmViagem)} de viagem)\n")
         if (card.kmDeslocamento > 0 || s.retornoPct > 0) {

@@ -2,21 +2,25 @@ package com.radardeganhos.app
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
-import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.drawable.GradientDrawable
+import android.os.Handler
+import android.os.Looper
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
-import android.widget.TextView
 import android.widget.Toast
 import kotlin.math.abs
+import kotlin.math.max
 
 /**
  * Botão flutuante (arrastável) + painel de resultado desenhados por cima
  * de qualquer app, usando a janela do serviço de acessibilidade.
+ *
+ * O painel respeita as configurações: duração na tela, escala e quais itens mostrar.
  */
 class OverlayController(
     private val service: AccessibilityService,
@@ -24,10 +28,17 @@ class OverlayController(
 ) {
 
     private val wm = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    private val handler = Handler(Looper.getMainLooper())
+
     private var bubble: View? = null
     private var bubbleLp: WindowManager.LayoutParams? = null
     private var panel: View? = null
     private var panelVisibleBeforeCapture = false
+    private var panelScale = 0f
+    private var hideRunnable: Runnable? = null
+
+    /** O card está aberto na tela? A auto-análise usa isso para não atropelar a leitura. */
+    val isPanelVisible: Boolean get() = panel?.visibility == View.VISIBLE
 
     private fun dp(v: Float): Int = (v * service.resources.displayMetrics.density).toInt()
 
@@ -107,15 +118,60 @@ class OverlayController(
     }
 
     fun showResult(a: RideAnalysis, s: Settings) {
-        val v = panel ?: inflatePanel().also { panel = it }
-        bind(v, a, s)
+        ensurePanel(s.cardEscala)
+        val v = panel ?: return
+        PanelBinder.bind(v, a, s)
         v.visibility = View.VISIBLE
+        scheduleHide(s.cardDuracaoSeg)
     }
 
-    private fun inflatePanel(): View {
+    fun hidePanel() {
+        cancelHide()
+        panel?.visibility = View.GONE
+    }
+
+    /** Aplica na hora as configurações do card (toggles e tamanho). */
+    fun applySettings(s: Settings) {
+        if (panel != null && panelScale != s.cardEscala) {
+            cancelHide()
+            panel?.let { runCatching { wm.removeView(it) } }
+            panel = null
+            panelScale = 0f
+            return
+        }
+        panel?.let { PanelBinder.applyVisibility(it, s) }
+    }
+
+    private fun ensurePanel(scale: Float) {
+        if (panel != null && panelScale == scale) return
+        panel?.let { runCatching { wm.removeView(it) } }
+        panel = inflatePanel(scale)
+        panelScale = scale
+    }
+
+    /** Fecha o card sozinho depois do tempo configurado (0 = nunca). */
+    private fun scheduleHide(segundos: Int) {
+        cancelHide()
+        if (segundos <= 0) return
+        val runnable = Runnable {
+            panel?.visibility = View.GONE
+            hideRunnable = null
+        }
+        hideRunnable = runnable
+        handler.postDelayed(runnable, segundos * 1000L)
+    }
+
+    private fun cancelHide() {
+        hideRunnable?.let { handler.removeCallbacks(it) }
+        hideRunnable = null
+    }
+
+    private fun inflatePanel(scale: Float): View {
         val v = LayoutInflater.from(service).inflate(R.layout.overlay_panel, null)
+        scaleTree(v, scale)
         val dm = service.resources.displayMetrics
-        val width = minOf((dm.widthPixels * 0.92f).toInt(), dp(360f))
+        val maxWidth = (dm.widthPixels * 0.94f).toInt()
+        val width = minOf(maxWidth, dp(360f * scale))
         val lp = WindowManager.LayoutParams(
             width,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -125,12 +181,16 @@ class OverlayController(
         ).apply { gravity = Gravity.CENTER }
         v.elevation = dp(10f).toFloat()
         runCatching { wm.addView(v, lp) }
-        v.findViewById<View>(R.id.btnClose).setOnClickListener { v.visibility = View.GONE }
+        v.findViewById<View>(R.id.btnClose).setOnClickListener {
+            cancelHide()
+            v.visibility = View.GONE
+        }
         v.findViewById<View>(R.id.btnRepeat).setOnClickListener {
+            cancelHide()
             v.visibility = View.GONE
             onAnalyze()
         }
-        // arrasta o painel pelo cabeçalho
+        // arrasta o painel pelo cabeçalho (e segurar ali pausa o fechamento automático)
         val header = v.findViewById<View>(R.id.tvVerdict).parent as View
         header.setOnTouchListener(object : View.OnTouchListener {
             var px = 0
@@ -140,7 +200,9 @@ class OverlayController(
             override fun onTouch(view: View, ev: MotionEvent): Boolean {
                 when (ev.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
-                        px = lp.x; py = lp.y; tx = ev.rawX; ty = ev.rawY; return true
+                        px = lp.x; py = lp.y; tx = ev.rawX; ty = ev.rawY
+                        cancelHide()
+                        return true
                     }
                     MotionEvent.ACTION_MOVE -> {
                         lp.x = px + (ev.rawX - tx).toInt()
@@ -155,70 +217,45 @@ class OverlayController(
         return v
     }
 
-    private fun bind(v: View, a: RideAnalysis, s: Settings) {
-        val cor = when (a.veredito) {
-            Veredito.OTIMA -> Color.parseColor("#00E676")
-            Veredito.BOA -> Color.parseColor("#00D26A")
-            Veredito.MEDIA -> Color.parseColor("#FFC531")
-            Veredito.RUIM -> Color.parseColor("#FF4D5E")
-        }
+    /**
+     * Aplica a escala escolhida nas configurações direto nos tamanhos do layout.
+     * Escalar textSize/paddings (em vez de scaleX/scaleY) evita o corte que o
+     * scaleX sofre porque a janela é medida antes da transformação.
+     */
+    private fun scaleTree(v: View, k: Float) {
+        if (k == 1f) return
 
-        val verdict = v.findViewById<TextView>(R.id.tvVerdict)
-        verdict.text = a.veredito.label
-        verdict.setTextColor(cor)
-        verdict.background = GradientDrawable().apply {
-            cornerRadius = dp(999f).toFloat()
-            setColor(Color.argb(34, Color.red(cor), Color.green(cor), Color.blue(cor)))
-            setStroke(dp(1f), Color.argb(70, Color.red(cor), Color.green(cor), Color.blue(cor)))
+        if (v is android.widget.TextView) {
+            v.setTextSize(TypedValue.COMPLEX_UNIT_PX, v.textSize * k)
         }
-
-        v.findViewById<TextView>(R.id.tvApp).text = buildString {
-            append(if (a.card.app != null) "card ${a.card.app}" else "leitura de tela")
-            append(" · nota ")
-            append(Math.round(a.score))
-            append("%")
+        v.setPadding(
+            (v.paddingLeft * k).toInt(),
+            (v.paddingTop * k).toInt(),
+            (v.paddingRight * k).toInt(),
+            (v.paddingBottom * k).toInt()
+        )
+        (v.layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
+            lp.setMargins(
+                (lp.leftMargin * k).toInt(),
+                (lp.topMargin * k).toInt(),
+                (lp.rightMargin * k).toInt(),
+                (lp.bottomMargin * k).toInt()
+            )
+            if (lp.height > 0) lp.height = max(1, (lp.height * k).toInt())
+            v.layoutParams = lp
         }
-
-        v.findViewById<TextView>(R.id.tvHora).apply {
-            text = Report.money(a.liquidoHora)
-            setTextColor(cor)
-        }
-        v.findViewById<TextView>(R.id.tvKm).text = Report.money(a.liquidoKm) + "/km"
-        v.findViewById<TextView>(R.id.tvBruto).text =
-            "bruto ${Report.money(a.brutoHora)}/h · ${Report.money(a.brutoKm)}/km"
-
-        v.findViewById<TextView>(R.id.tvResumo).text = buildString {
-            append("Corrida ${Report.money(a.bruto)} · ${Report.km(a.card.kmTotal)} · ${Report.tempo(a.minTotal)}\n")
-            append("Deslocamento ${Report.km(a.card.kmDeslocamento)} / ${Report.tempo(a.card.minDeslocamento)}")
-            append(" · Viagem ${Report.km(a.card.kmViagem)} / ${Report.tempo(a.card.minViagem)}")
-        }
-
-        v.findViewById<TextView>(R.id.tvCustos).text = buildString {
-            append("Combustível ${Report.money(a.combustivel)} · Manutenção ${Report.money(a.manutencao)}")
-            if (a.comissao > 0) append(" · Comissão ${Report.money(a.comissao)}")
-            if (a.fixo > 0) append(" · Fixo ${Report.money(a.fixo)}")
-            append("\nSobra ${Report.money(a.liquido)} · custo ${Report.money(a.custoTotal)}")
-            if (a.card.taxaDeslocamento != null) {
-                append("\nTaxa de deslocamento ${Report.money(a.card.taxaDeslocamento!!)} (não somada)")
-            }
-        }
-
-        v.findViewById<TextView>(R.id.tvMeta).apply {
-            text = if (a.card.valor < a.valorMinimo) {
-                "Abaixo da meta (${Report.money(s.metaKm)}/km e ${Report.money(s.metaHora)}/h).\n" +
-                    "Mínimo para valer a pena: ${Report.money(a.valorMinimo)}"
-            } else {
-                "Na meta ou acima (${Report.money(s.metaKm)}/km e ${Report.money(s.metaHora)}/h).\n" +
-                    "Mínimo aceitável: ${Report.money(a.valorMinimo)}"
-            }
-            setTextColor(if (a.card.valor < a.valorMinimo) Color.parseColor("#FFC531") else Color.parseColor("#00D26A"))
+        if (v is ViewGroup) {
+            for (i in 0 until v.childCount) scaleTree(v.getChildAt(i), k)
         }
     }
 
     fun removeAll() {
+        cancelHide()
+        handler.removeCallbacksAndMessages(null)
         bubble?.let { runCatching { wm.removeView(it) } }
         panel?.let { runCatching { wm.removeView(it) } }
         bubble = null
         panel = null
+        panelScale = 0f
     }
 }

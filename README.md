@@ -4,12 +4,12 @@ APK Android que lê o card de corrida do **Uber** e da **99** em qualquer tela (
 
 ## APK pronto
 
-`dist/RadarDeGanhos-1.0.apk` — 50 MB, assinado (esquema v2), Android 11+ (API 30).
+`dist/RadarDeGanhos-1.1.apk` — 50 MB, assinado (esquema v2), Android 11+ (API 30).
+Instala por cima da 1.0, mantendo as configurações salvas.
 
 ```
 pacote: com.radardeganhos.app
-versão: 1.0 (versionCode 1)
-sha256: e6bc3bd577f7c2d4f9d45241bb6bf52b5996f604da0d582fd733b4601fc97883
+versão: 1.1 (versionCode 2)
 ```
 
 ## Instalação
@@ -29,12 +29,14 @@ sha256: e6bc3bd577f7c2d4f9d45241bb6bf52b5996f604da0d582fd733b4601fc97883
 
 ## O que o painel mostra
 
-- **R$/hora líquido** em destaque e **R$/km líquido**, coloridos pelo veredito.
-- Bruto por hora e por km (para comparar com o que o app informa).
-- Valor da corrida, km total (deslocamento + viagem), tempo total.
-- Combustível, manutenção, comissão, custo fixo, custo total e sobra.
+- **Gera por hora** e **por km nesta corrida** em destaque — os valores da oferta atual.
+- Logo abaixo, **lucro líquido da corrida**: `valor − custos`, com o líquido por hora e por km.
+- Trajeto: deslocamento até o cliente e viagem (km e tempo de cada um), km usado no custo.
+- Combustível, manutenção, comissão, custo fixo e custo total.
 - **Mínimo que a corrida precisaria pagar** para bater sua meta, e a diferença que falta.
-- Nota de 0 a 100% (100% = exatamente na meta).
+- Nota de 0 a 100% (100% = exatamente na meta) e veredito.
+
+Todos os itens podem ser ligados/desligados individualmente nas configurações.
 
 Veredito: **ÓTIMA** (≥120% da meta) · **BOA** (≥100%) · **MÉDIA** (≥80%) · **RUIM** (<80%).
 
@@ -50,6 +52,10 @@ Veredito: **ÓTIMA** (≥120% da meta) · **BOA** (≥100%) · **MÉDIA** (≥80
 | Retorno extra (%) | km de volta ao ponto forte |
 | Meta R$/km e R$/hora | base do veredito e do valor mínimo |
 | Auto-análise | leitura automática quando um card aparece no Uber/99 |
+| Espera entre leituras (s) | intervalo mínimo entre duas auto-análises (2–120 s) |
+| Ficar na tela (s) | quanto tempo o card fica aberto; **0** = só fecha no ✕ |
+| Tamanho do card | Pequeno 0,85× · Normal 1× · Grande 1,15× · Extra 1,3× |
+| Itens do card | veredito, R$/hora, R$/km, valor/km/tempo, lucro líquido, custos, trajeto, meta, botão reler |
 
 ## Cálculo
 
@@ -82,7 +88,7 @@ Requisitos: JDK 17, Android SDK 34, Gradle 8.7.
 ```bash
 echo "sdk.dir=/caminho/do/android-sdk" > local.properties
 gradle :app:assembleRelease      # gera app/build/outputs/apk/release/app-release.apk
-gradle :app:testDebugUnitTest    # 15 testes: parser, cálculo, inflação das telas
+gradle :app:testDebugUnitTest    # 22 testes: parser, cálculo, card, toggles, auto-análise, inflação das telas
 ```
 
 Assinatura: `keystore/radar.jks`, alias `radar`, senha `radar2026` (definida em `app/build.gradle.kts`). Mantenha o mesmo keystore para atualizar o app no celular sem desinstalar.

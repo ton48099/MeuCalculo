@@ -26,7 +26,23 @@ data class Settings(
     /** Km de retorno extra em % do total (para voltar ao ponto forte). */
     val retornoPct: Double = 0.0,
     /** Analisa sozinho quando um card aparece no Uber/99. */
-    val autoScan: Boolean = true
+    val autoScan: Boolean = true,
+    /** Intervalo mínimo, em segundos, entre duas leituras automáticas. */
+    val autoIntervaloSeg: Int = 6,
+    /** Quantos segundos o card flutuante fica na tela. 0 = só fecha no X. */
+    val cardDuracaoSeg: Int = 12,
+    /** Escala do card: 0.85 pequeno, 1.0 normal, 1.15 grande, 1.3 extra. */
+    val cardEscala: Float = 1.0f,
+    /** Itens visíveis no card flutuante. */
+    val cardVeredito: Boolean = true,
+    val cardHora: Boolean = true,
+    val cardKm: Boolean = true,
+    val cardResumo: Boolean = true,
+    val cardLucro: Boolean = true,
+    val cardCustos: Boolean = true,
+    val cardTrajeto: Boolean = true,
+    val cardMeta: Boolean = true,
+    val cardReler: Boolean = true
 ) {
     /** Custo variável por km (combustível + manutenção). */
     val custoKm: Double
@@ -54,7 +70,19 @@ object Prefs {
             metaHora = dbl("metaHora", d.metaHora),
             esperaMin = dbl("esperaMin", d.esperaMin),
             retornoPct = dbl("retornoPct", d.retornoPct),
-            autoScan = p.getBoolean("autoScan", d.autoScan)
+            autoScan = p.getBoolean("autoScan", d.autoScan),
+            autoIntervaloSeg = p.getInt("autoIntervaloSeg", d.autoIntervaloSeg),
+            cardDuracaoSeg = p.getInt("cardDuracaoSeg", d.cardDuracaoSeg),
+            cardEscala = p.getFloat("cardEscala", d.cardEscala),
+            cardVeredito = p.getBoolean("cardVeredito", d.cardVeredito),
+            cardHora = p.getBoolean("cardHora", d.cardHora),
+            cardKm = p.getBoolean("cardKm", d.cardKm),
+            cardResumo = p.getBoolean("cardResumo", d.cardResumo),
+            cardLucro = p.getBoolean("cardLucro", d.cardLucro),
+            cardCustos = p.getBoolean("cardCustos", d.cardCustos),
+            cardTrajeto = p.getBoolean("cardTrajeto", d.cardTrajeto),
+            cardMeta = p.getBoolean("cardMeta", d.cardMeta),
+            cardReler = p.getBoolean("cardReler", d.cardReler)
         )
     }
 
@@ -70,6 +98,18 @@ object Prefs {
             .putString("esperaMin", s.esperaMin.toString())
             .putString("retornoPct", s.retornoPct.toString())
             .putBoolean("autoScan", s.autoScan)
+            .putInt("autoIntervaloSeg", s.autoIntervaloSeg)
+            .putInt("cardDuracaoSeg", s.cardDuracaoSeg)
+            .putFloat("cardEscala", s.cardEscala)
+            .putBoolean("cardVeredito", s.cardVeredito)
+            .putBoolean("cardHora", s.cardHora)
+            .putBoolean("cardKm", s.cardKm)
+            .putBoolean("cardResumo", s.cardResumo)
+            .putBoolean("cardLucro", s.cardLucro)
+            .putBoolean("cardCustos", s.cardCustos)
+            .putBoolean("cardTrajeto", s.cardTrajeto)
+            .putBoolean("cardMeta", s.cardMeta)
+            .putBoolean("cardReler", s.cardReler)
             .apply()
     }
 }

@@ -8,6 +8,8 @@ import android.os.Bundle
 import android.provider.Settings as AndroidSettings
 import android.provider.Settings.Secure as SecureSettings
 import android.widget.EditText
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -29,6 +31,22 @@ class MainActivity : AppCompatActivity() {
     private lateinit var etMetaKm: EditText
     private lateinit var etMetaHora: EditText
     private lateinit var swAuto: SwitchMaterial
+    private lateinit var etCardDuracao: EditText
+    private lateinit var etAutoIntervalo: EditText
+    private lateinit var rgEscala: RadioGroup
+    private lateinit var rbPequeno: RadioButton
+    private lateinit var rbNormal: RadioButton
+    private lateinit var rbGrande: RadioButton
+    private lateinit var rbExtra: RadioButton
+    private lateinit var swVeredito: SwitchMaterial
+    private lateinit var swHora: SwitchMaterial
+    private lateinit var swKm: SwitchMaterial
+    private lateinit var swResumo: SwitchMaterial
+    private lateinit var swLucro: SwitchMaterial
+    private lateinit var swCustos: SwitchMaterial
+    private lateinit var swTrajeto: SwitchMaterial
+    private lateinit var swMeta: SwitchMaterial
+    private lateinit var swReler: SwitchMaterial
     private lateinit var tvStatus: TextView
     private lateinit var tvResultado: TextView
     private lateinit var etTextoLivre: EditText
@@ -55,16 +73,30 @@ class MainActivity : AppCompatActivity() {
         etMetaKm = findViewById(R.id.etMetaKm)
         etMetaHora = findViewById(R.id.etMetaHora)
         swAuto = findViewById(R.id.swAuto)
+        etCardDuracao = findViewById(R.id.etCardDuracao)
+        etAutoIntervalo = findViewById(R.id.etAutoIntervalo)
+        rgEscala = findViewById(R.id.rgEscala)
+        rbPequeno = findViewById(R.id.rbPequeno)
+        rbNormal = findViewById(R.id.rbNormal)
+        rbGrande = findViewById(R.id.rbGrande)
+        rbExtra = findViewById(R.id.rbExtra)
+        swVeredito = findViewById(R.id.swVeredito)
+        swHora = findViewById(R.id.swHora)
+        swKm = findViewById(R.id.swKm)
+        swResumo = findViewById(R.id.swResumo)
+        swLucro = findViewById(R.id.swLucro)
+        swCustos = findViewById(R.id.swCustos)
+        swTrajeto = findViewById(R.id.swTrajeto)
+        swMeta = findViewById(R.id.swMeta)
+        swReler = findViewById(R.id.swReler)
         tvStatus = findViewById(R.id.tvStatus)
         tvResultado = findViewById(R.id.tvResultado)
         etTextoLivre = findViewById(R.id.etTextoLivre)
 
         fillForm(Prefs.load(this))
 
-        findViewById<TextView>(R.id.btnSalvar).setOnClickListener {
-            Prefs.save(this, readForm())
-            tvResultado.text = "Configurações salvas. Custo por km: ${Report.money(readForm().custoKm)}."
-        }
+        findViewById<TextView>(R.id.btnSalvar).setOnClickListener { salvar() }
+        findViewById<TextView>(R.id.btnSalvarCard).setOnClickListener { salvar() }
 
         findViewById<TextView>(R.id.btnAcessibilidade).setOnClickListener {
             runCatching { startActivity(Intent(AndroidSettings.ACTION_ACCESSIBILITY_SETTINGS)) }
@@ -107,6 +139,16 @@ class MainActivity : AppCompatActivity() {
         return enabled.split(':').any { it.equals(alvo, ignoreCase = true) }
     }
 
+    /** Salva tudo e já aplica no card que estiver na tela. */
+    private fun salvar() {
+        val s = readForm()
+        Prefs.save(this, s)
+        RideAccessibilityService.instance?.applySettings(s)
+        tvResultado.text = "Configurações salvas. Custo por km: ${Report.money(s.custoKm)}." +
+            if (s.cardDuracaoSeg == 0) " Card fica na tela até você fechar."
+            else " Card fecha sozinho em ${s.cardDuracaoSeg}s."
+    }
+
     private fun fillForm(s: Settings) {
         etPreco.setText(plain(s.precoLitro))
         etConsumo.setText(plain(s.consumo))
@@ -118,6 +160,32 @@ class MainActivity : AppCompatActivity() {
         etMetaKm.setText(plain(s.metaKm))
         etMetaHora.setText(plain(s.metaHora))
         swAuto.isChecked = s.autoScan
+        etCardDuracao.setText(s.cardDuracaoSeg.toString())
+        etAutoIntervalo.setText(s.autoIntervaloSeg.toString())
+        rgEscala.check(
+            when {
+                s.cardEscala <= 0.9f -> R.id.rbPequeno
+                s.cardEscala >= 1.25f -> R.id.rbExtra
+                s.cardEscala >= 1.1f -> R.id.rbGrande
+                else -> R.id.rbNormal
+            }
+        )
+        swVeredito.isChecked = s.cardVeredito
+        swHora.isChecked = s.cardHora
+        swKm.isChecked = s.cardKm
+        swResumo.isChecked = s.cardResumo
+        swLucro.isChecked = s.cardLucro
+        swCustos.isChecked = s.cardCustos
+        swTrajeto.isChecked = s.cardTrajeto
+        swMeta.isChecked = s.cardMeta
+        swReler.isChecked = s.cardReler
+    }
+
+    private fun escalaSelecionada(): Float = when (rgEscala.checkedRadioButtonId) {
+        R.id.rbPequeno -> 0.85f
+        R.id.rbGrande -> 1.15f
+        R.id.rbExtra -> 1.3f
+        else -> 1.0f
     }
 
     private fun plain(v: Double): String =
@@ -137,7 +205,19 @@ class MainActivity : AppCompatActivity() {
             metaHora = v(etMetaHora, d.metaHora),
             esperaMin = v(etEspera, d.esperaMin),
             retornoPct = v(etRetorno, d.retornoPct),
-            autoScan = swAuto.isChecked
+            autoScan = swAuto.isChecked,
+            autoIntervaloSeg = v(etAutoIntervalo, d.autoIntervaloSeg.toDouble()).toInt().coerceIn(2, 120),
+            cardDuracaoSeg = v(etCardDuracao, d.cardDuracaoSeg.toDouble()).toInt().coerceIn(0, 120),
+            cardEscala = escalaSelecionada(),
+            cardVeredito = swVeredito.isChecked,
+            cardHora = swHora.isChecked,
+            cardKm = swKm.isChecked,
+            cardResumo = swResumo.isChecked,
+            cardLucro = swLucro.isChecked,
+            cardCustos = swCustos.isChecked,
+            cardTrajeto = swTrajeto.isChecked,
+            cardMeta = swMeta.isChecked,
+            cardReler = swReler.isChecked
         )
     }
 

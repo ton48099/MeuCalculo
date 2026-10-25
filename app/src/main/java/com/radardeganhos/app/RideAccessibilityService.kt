@@ -28,9 +28,6 @@ class RideAccessibilityService : AccessibilityService() {
         @Volatile
         var instance: RideAccessibilityService? = null
             private set
-
-        val UBER_PKGS = setOf("com.ubercab.driver", "com.ubercab", "com.ubercab.driver.lite")
-        val NINE_PKGS = setOf("com.taxis99", "com.taxis99.driver", "com.taxis99.passenger")
     }
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -41,6 +38,8 @@ class RideAccessibilityService : AccessibilityService() {
     private var scanning = false
     private var lastScanAt = 0L
     private var lastPackage: String? = null
+    /** Assinatura do último card analisado, para não repetir a mesma leitura. */
+    private var lastCardSignature: String? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -56,15 +55,21 @@ class RideAccessibilityService : AccessibilityService() {
         if (pkg == packageName) return
         lastPackage = pkg
 
-        val settings = Prefs.load(this)
-        if (!settings.autoScan) return
-        if (pkg !in UBER_PKGS && pkg !in NINE_PKGS) return
         if (e.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
             e.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
         ) return
 
+        val settings = Prefs.load(this)
         val now = SystemClock.elapsedRealtime()
-        if (scanning || now - lastScanAt < 4000L) return
+        val podeLer = AutoScanPolicy.shouldScan(
+            s = settings,
+            pkg = pkg,
+            now = now,
+            lastScanAt = lastScanAt,
+            scanning = scanning,
+            panelVisible = overlay?.isPanelVisible == true
+        )
+        if (!podeLer) return
         lastScanAt = now
         handler.removeCallbacks(autoScan)
         handler.postDelayed(autoScan, 900L)
@@ -118,6 +123,11 @@ class RideAccessibilityService : AccessibilityService() {
                     return@launch
                 }
 
+                // Auto-análise não repete o mesmo card; a leitura manual sempre responde.
+                val signature = cardSignature(card)
+                if (!manual && signature == lastCardSignature) return@launch
+                lastCardSignature = signature
+
                 val analysis = Calculator.analyze(card, settings)
                 overlay?.showResult(analysis, settings)
             } catch (t: Throwable) {
@@ -129,6 +139,14 @@ class RideAccessibilityService : AccessibilityService() {
             }
         }
     }
+
+    /** Repassa às configurações salvas para o card que já está na tela. */
+    fun applySettings(s: Settings) {
+        overlay?.applySettings(s)
+    }
+
+    private fun cardSignature(card: RideCard): String =
+        "${card.app}|${card.valor}|${card.kmTotal}|${card.minTotal}"
 
     private suspend fun captureScreen(): Bitmap? = suspendCancellableCoroutine { cont ->
         val callback = object : TakeScreenshotCallback {
@@ -160,6 +178,7 @@ class RideAccessibilityService : AccessibilityService() {
         handler.removeCallbacksAndMessages(null)
         overlay?.removeAll()
         overlay = null
+        lastCardSignature = null
         screenReader?.close()
         screenReader = null
         scope.cancel()
