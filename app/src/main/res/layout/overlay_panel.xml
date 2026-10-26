@@ -139,6 +139,17 @@
         android:textColor="@color/textDim"
         android:textSize="10sp" />
 
+    <!-- Endereços do card: onde buscar e onde deixar o passageiro. -->
+    <TextView
+        android:id="@+id/tvEnderecos"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:lineSpacingExtra="2dp"
+        android:text=""
+        android:textColor="@color/textDim"
+        android:textSize="11sp" />
+
     <!-- Lucro líquido da corrida -->
     <LinearLayout
         android:id="@+id/boxLucro"

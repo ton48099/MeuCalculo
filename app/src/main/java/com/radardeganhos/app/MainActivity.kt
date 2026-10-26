@@ -35,6 +35,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var etKmRuim: EditText
     private lateinit var etKmBoa: EditText
     private lateinit var swAuto: SwitchMaterial
+    private lateinit var swQualquerApp: SwitchMaterial
     private lateinit var etCardDuracao: EditText
     private lateinit var etAutoIntervalo: EditText
     private lateinit var rgEscala: RadioGroup
@@ -51,7 +52,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swTrajeto: SwitchMaterial
     private lateinit var swMeta: SwitchMaterial
     private lateinit var swReler: SwitchMaterial
+    private lateinit var swEnderecos: SwitchMaterial
     private lateinit var tvStatus: TextView
+    private lateinit var tvDiag: TextView
     private lateinit var tvHistoricoContagem: TextView
     private lateinit var tvResultado: TextView
     private lateinit var etTextoLivre: EditText
@@ -82,6 +85,7 @@ class MainActivity : AppCompatActivity() {
         etKmRuim = findViewById(R.id.etKmRuim)
         etKmBoa = findViewById(R.id.etKmBoa)
         swAuto = findViewById(R.id.swAuto)
+        swQualquerApp = findViewById(R.id.swQualquerApp)
         etCardDuracao = findViewById(R.id.etCardDuracao)
         etAutoIntervalo = findViewById(R.id.etAutoIntervalo)
         rgEscala = findViewById(R.id.rgEscala)
@@ -98,7 +102,9 @@ class MainActivity : AppCompatActivity() {
         swTrajeto = findViewById(R.id.swTrajeto)
         swMeta = findViewById(R.id.swMeta)
         swReler = findViewById(R.id.swReler)
+        swEnderecos = findViewById(R.id.swEnderecos)
         tvStatus = findViewById(R.id.tvStatus)
+        tvDiag = findViewById(R.id.tvDiag)
         tvHistoricoContagem = findViewById(R.id.tvHistoricoContagem)
         tvResultado = findViewById(R.id.tvResultado)
         etTextoLivre = findViewById(R.id.etTextoLivre)
@@ -120,6 +126,8 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<TextView>(R.id.btnGaleria).setOnClickListener { pickImage.launch("image/*") }
 
+        ligarSalvamentoImediato()
+
         findViewById<TextView>(R.id.btnCalcularTexto).setOnClickListener {
             val texto = etTextoLivre.text?.toString().orEmpty()
             if (texto.isBlank()) {
@@ -133,6 +141,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateStatus()
+        tvDiag.text = "Diagnóstico da leitura automática: ${AutoDiag.resumo(this)}"
         atualizarHistorico()
     }
 
@@ -189,6 +198,7 @@ class MainActivity : AppCompatActivity() {
         etKmRuim.setText(plain(s.kmRuimAte))
         etKmBoa.setText(plain(s.kmBoaDe))
         swAuto.isChecked = s.autoScan
+        swQualquerApp.isChecked = s.autoQualquerApp
         etCardDuracao.setText(s.cardDuracaoSeg.toString())
         etAutoIntervalo.setText(s.autoIntervaloSeg.toString())
         rgEscala.check(
@@ -208,6 +218,47 @@ class MainActivity : AppCompatActivity() {
         swTrajeto.isChecked = s.cardTrajeto
         swMeta.isChecked = s.cardMeta
         swReler.isChecked = s.cardReler
+        swEnderecos.isChecked = s.cardEnderecos
+    }
+
+    /**
+     * Tudo que mexe na leitura automática ou no card salva na hora — sem depender do
+     * botão "Salvar". Era o que fazia a config "não funcionar na prática": o campo
+     * mudava na tela, mas o serviço continuava lendo o valor antigo.
+     */
+    private fun ligarSalvamentoImediato() {
+        val autoSalvar = {
+            val s = readForm()
+            Prefs.save(this, s)
+            RideAccessibilityService.instance?.applySettings(s)
+            Unit
+        }
+
+        // Botão único ligar/desligar + liberações e intervalo.
+        swAuto.setOnCheckedChangeListener { _, _ -> autoSalvar() }
+        swQualquerApp.setOnCheckedChangeListener { _, _ -> autoSalvar() }
+
+        // Itens do card flutuante.
+        listOf(
+            swVeredito, swHora, swKm, swResumo, swLucro,
+            swCustos, swTrajeto, swEnderecos, swMeta, swReler
+        ).forEach { sw -> sw.setOnCheckedChangeListener { _, _ -> autoSalvar() } }
+        rgEscala.setOnCheckedChangeListener { _, _ -> autoSalvar() }
+
+        // Campos de tempo: salvam ao sair do campo e reescrevem o valor que ficou
+        // guardado (o intervalo é limitado a 2–120 s, a duração a 0–120 s).
+        listOf(etAutoIntervalo, etCardDuracao).forEach { et ->
+            et.setOnFocusChangeListener { _, temFoco ->
+                if (!temFoco) {
+                    autoSalvar()
+                    val salvo = Prefs.load(this)
+                    et.setText(
+                        if (et.id == R.id.etAutoIntervalo) salvo.autoIntervaloSeg.toString()
+                        else salvo.cardDuracaoSeg.toString()
+                    )
+                }
+            }
+        }
     }
 
     private fun escalaSelecionada(): Float = when (rgEscala.checkedRadioButtonId) {
@@ -239,6 +290,7 @@ class MainActivity : AppCompatActivity() {
             esperaMin = v(etEspera, d.esperaMin),
             retornoPct = v(etRetorno, d.retornoPct),
             autoScan = swAuto.isChecked,
+            autoQualquerApp = swQualquerApp.isChecked,
             autoIntervaloSeg = v(etAutoIntervalo, d.autoIntervaloSeg.toDouble()).toInt().coerceIn(2, 120),
             cardDuracaoSeg = v(etCardDuracao, d.cardDuracaoSeg.toDouble()).toInt().coerceIn(0, 120),
             cardEscala = escalaSelecionada(),
@@ -249,6 +301,7 @@ class MainActivity : AppCompatActivity() {
             cardLucro = swLucro.isChecked,
             cardCustos = swCustos.isChecked,
             cardTrajeto = swTrajeto.isChecked,
+            cardEnderecos = swEnderecos.isChecked,
             cardMeta = swMeta.isChecked,
             cardReler = swReler.isChecked
         )

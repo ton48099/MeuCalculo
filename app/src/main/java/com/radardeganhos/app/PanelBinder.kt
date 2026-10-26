@@ -61,6 +61,16 @@ object PanelBinder {
             }
         }
 
+        v.findViewById<TextView>(R.id.tvEnderecos).apply {
+            val o = a.card.origem
+            val d = a.card.destino
+            text = buildString {
+                if (o != null) append("Busca: ").append(o)
+                if (o != null && d != null) append('\n')
+                if (d != null) append("Desembarque: ").append(d)
+            }
+        }
+
         // Lucro líquido da corrida = valor − custos configurados.
         val lucro = v.findViewById<TextView>(R.id.tvLucroValor)
         lucro.text = Report.money(a.liquido)
@@ -116,6 +126,10 @@ object PanelBinder {
         v.findViewById<View>(R.id.colKm).visibility = vis(s.cardKm)
         v.findViewById<View>(R.id.rowMetricas).visibility = vis(s.cardHora || s.cardKm)
         v.findViewById<View>(R.id.tvBruto).visibility = vis(s.cardResumo)
+        val enderecos = v.findViewById<TextView>(R.id.tvEnderecos)
+        // Sem endereço identificado, a linha some em vez de mostrar vazia.
+        val temEndereco = !enderecos.text.isNullOrBlank()
+        enderecos.visibility = if (s.cardEnderecos && temEndereco) View.VISIBLE else View.GONE
         v.findViewById<View>(R.id.boxLucro).visibility = vis(s.cardLucro)
         v.findViewById<View>(R.id.tvResumo).visibility = vis(s.cardTrajeto)
         v.findViewById<View>(R.id.tvCustos).visibility = vis(s.cardCustos)

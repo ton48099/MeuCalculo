@@ -35,6 +35,8 @@ data class Settings(
     val retornoPct: Double = 0.0,
     /** Analisa sozinho quando um card aparece no Uber/99. */
     val autoScan: Boolean = true,
+    /** Libera a leitura automática também fora das apps de corrida conhecidas. */
+    val autoQualquerApp: Boolean = false,
     /** Intervalo mínimo, em segundos, entre duas leituras automáticas. */
     val autoIntervaloSeg: Int = 6,
     /** Quantos segundos o card flutuante fica na tela. 0 = só fecha no X. */
@@ -49,6 +51,8 @@ data class Settings(
     val cardLucro: Boolean = true,
     val cardCustos: Boolean = true,
     val cardTrajeto: Boolean = true,
+    /** Endereços de busca e desembarque no card. */
+    val cardEnderecos: Boolean = true,
     val cardMeta: Boolean = true,
     val cardReler: Boolean = true
 ) {
@@ -83,6 +87,7 @@ object Prefs {
             esperaMin = dbl("esperaMin", d.esperaMin),
             retornoPct = dbl("retornoPct", d.retornoPct),
             autoScan = p.getBoolean("autoScan", d.autoScan),
+            autoQualquerApp = p.getBoolean("autoQualquerApp", d.autoQualquerApp),
             autoIntervaloSeg = p.getInt("autoIntervaloSeg", d.autoIntervaloSeg),
             cardDuracaoSeg = p.getInt("cardDuracaoSeg", d.cardDuracaoSeg),
             cardEscala = p.getFloat("cardEscala", d.cardEscala),
@@ -93,6 +98,7 @@ object Prefs {
             cardLucro = p.getBoolean("cardLucro", d.cardLucro),
             cardCustos = p.getBoolean("cardCustos", d.cardCustos),
             cardTrajeto = p.getBoolean("cardTrajeto", d.cardTrajeto),
+            cardEnderecos = p.getBoolean("cardEnderecos", d.cardEnderecos),
             cardMeta = p.getBoolean("cardMeta", d.cardMeta),
             cardReler = p.getBoolean("cardReler", d.cardReler)
         )
@@ -114,6 +120,7 @@ object Prefs {
             .putString("esperaMin", s.esperaMin.toString())
             .putString("retornoPct", s.retornoPct.toString())
             .putBoolean("autoScan", s.autoScan)
+            .putBoolean("autoQualquerApp", s.autoQualquerApp)
             .putInt("autoIntervaloSeg", s.autoIntervaloSeg)
             .putInt("cardDuracaoSeg", s.cardDuracaoSeg)
             .putFloat("cardEscala", s.cardEscala)
@@ -124,6 +131,7 @@ object Prefs {
             .putBoolean("cardLucro", s.cardLucro)
             .putBoolean("cardCustos", s.cardCustos)
             .putBoolean("cardTrajeto", s.cardTrajeto)
+            .putBoolean("cardEnderecos", s.cardEnderecos)
             .putBoolean("cardMeta", s.cardMeta)
             .putBoolean("cardReler", s.cardReler)
             .apply()

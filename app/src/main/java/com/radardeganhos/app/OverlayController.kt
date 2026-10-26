@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -24,7 +25,9 @@ import kotlin.math.max
  */
 class OverlayController(
     private val service: AccessibilityService,
-    private val onAnalyze: () -> Unit
+    private val onAnalyze: () -> Unit,
+    /** Chamado quando o card some da tela (X, tempo esgotado ou releitura). */
+    private val onPanelHide: () -> Unit = {}
 ) {
 
     private val wm = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -35,10 +38,20 @@ class OverlayController(
     private var panel: View? = null
     private var panelVisibleBeforeCapture = false
     private var panelScale = 0f
+    private var panelShownAt = 0L
     private var hideRunnable: Runnable? = null
 
     /** O card está aberto na tela? A auto-análise usa isso para não atropelar a leitura. */
     val isPanelVisible: Boolean get() = panel?.visibility == View.VISIBLE
+
+    /**
+     * Há quanto tempo (ms) o card está na tela, ou Long.MAX_VALUE se não estiver.
+     * A auto-análise segura a leitura só durante o período de graça — depois disso
+     * um card novo pode substituir, senão um card fixo (duração 0) bloquearia a
+     * leitura automática para sempre.
+     */
+    fun panelAbertoHa(now: Long): Long =
+        if (isPanelVisible) (now - panelShownAt).coerceAtLeast(0L) else Long.MAX_VALUE
 
     private fun dp(v: Float): Int = (v * service.resources.displayMetrics.density).toInt()
 
@@ -122,12 +135,23 @@ class OverlayController(
         val v = panel ?: return
         PanelBinder.bind(v, a, s)
         v.visibility = View.VISIBLE
+        panelShownAt = SystemClock.elapsedRealtime()
         scheduleHide(s.cardDuracaoSeg)
     }
 
     fun hidePanel() {
         cancelHide()
-        panel?.visibility = View.GONE
+        fecharPanel()
+    }
+
+    /** Fecha o card e avisa o serviço: o intervalo da auto-leitura recomeça agora. */
+    private fun fecharPanel() {
+        if (panel?.visibility == View.VISIBLE) {
+            panel?.visibility = View.GONE
+            onPanelHide()
+        } else {
+            panel?.visibility = View.GONE
+        }
     }
 
     /** Aplica na hora as configurações do card (toggles e tamanho). */
@@ -154,7 +178,7 @@ class OverlayController(
         cancelHide()
         if (segundos <= 0) return
         val runnable = Runnable {
-            panel?.visibility = View.GONE
+            fecharPanel()
             hideRunnable = null
         }
         hideRunnable = runnable
@@ -183,11 +207,11 @@ class OverlayController(
         runCatching { wm.addView(v, lp) }
         v.findViewById<View>(R.id.btnClose).setOnClickListener {
             cancelHide()
-            v.visibility = View.GONE
+            fecharPanel()
         }
         v.findViewById<View>(R.id.btnRepeat).setOnClickListener {
             cancelHide()
-            v.visibility = View.GONE
+            fecharPanel()
             onAnalyze()
         }
         // arrasta o painel pelo cabeçalho (e segurar ali pausa o fechamento automático)

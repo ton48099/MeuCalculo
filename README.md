@@ -4,13 +4,20 @@ APK Android que lê o card de corrida do **Uber** e da **99** em qualquer tela (
 
 ## APK pronto
 
-`dist/RadarDeGanhos-1.2.apk` — 50 MB, assinado (esquema v2), Android 11+ (API 30).
-Instala por cima da 1.1, mantendo as configurações salvas.
+`dist/RadarDeGanhos-1.3.apk` — 50 MB, assinado (esquema v2), Android 11+ (API 30).
+Instala por cima da 1.2, mantendo as configurações salvas.
 
 ```
 pacote: com.radardeganhos.app
-versão: 1.2 (versionCode 3)
+versão: 1.3 (versionCode 4)
 ```
+
+### Novidades da 1.3
+
+- **Leitura automática de verdade**: um relógio interno de 1,2 s decide sozinho quando capturar a tela — não depende mais de o Uber/99 emitir evento, que era o motivo de só ler quando você tocava no botão. Só gasta captura/OCR quando o texto da tela tem sinal de card (R$, km, min).
+- **Botão único no topo** liga e desliga a leitura automática, já aplicando na hora (sem botão Salvar); o campo do intervalo ficou logo abaixo, na mesma seção 1.
+- **Configurações do card valem na prática**: cada switch, o tamanho, o intervalo e a duração salvam e aplicam assim que você mexe.
+- **Busca e desembarque no card flutuante**, com o switch junto dos demais itens (sem trajeto identificado a linha some, em vez de aparecer vazia).
 
 ## Instalação
 
@@ -22,7 +29,7 @@ versão: 1.2 (versionCode 3)
 
 ## Como usar
 
-- **Card do Uber/99**: quando o card aparecer, toque no **R$** (ou espere a auto-análise, ligada por padrão).
+- **Card do Uber/99**: com a **leitura automática ligada** (seção 1, botão único) o app captura a tela sozinho a cada X segundos — o campo logo abaixo do botão escolhe o intervalo (2–120 s, padrão 6 s). O toque no **R$** continua funcionando a qualquer momento, mesmo com a leitura automática desligada.
 - **Foto, print, WhatsApp, Facebook**: deixe a imagem na tela e toque no **R$**. O app lê a tela inteira, não só os apps de corrida.
 - **Painel**: toque em **↻ Reler** para reler, **✕** para fechar; arraste o painel pelo cabeçalho e o botão R$ para onde quiser.
 - Sem o botão flutuante, a tela do app também analisa **foto da galeria** e **texto colado**.
@@ -60,11 +67,11 @@ Os quatro limites são editáveis na seção **4 · CORES** da tela do app (o pa
 | Espera extra (min) | tempo parado no embarque |
 | Retorno extra (%) | km de volta ao ponto forte |
 | Meta R$/km e R$/hora | base do veredito e do valor mínimo |
-| Auto-análise | leitura automática quando um card aparece no Uber/99 |
-| Espera entre leituras (s) | intervalo mínimo entre duas auto-análises (2–120 s) |
+| Leitura automática | botão único ligar/desligar; o app lê a tela sozinho, sem tocar em nada |
+| De quanto em quanto tempo | intervalo entre leituras automáticas (2–120 s, padrão 6 s) |
 | Ficar na tela (s) | quanto tempo o card fica aberto; **0** = só fecha no ✕ |
 | Tamanho do card | Pequeno 0,85× · Normal 1× · Grande 1,15× · Extra 1,3× |
-| Itens do card | veredito, R$/hora, R$/km, valor/km/tempo, lucro líquido, custos, trajeto, meta, botão reler |
+| Itens do card | veredito, R$/hora, R$/km, valor/km/tempo, busca e desembarque, lucro líquido, custos, trajeto, meta, botão reler |
 | Limites de cor | R$/hora vermelho até / verde a partir de, R$/km vermelho até / verde a partir de |
 
 ## Histórico de corridas
@@ -109,7 +116,7 @@ Requisitos: JDK 17, Android SDK 34, Gradle 8.7.
 ```bash
 echo "sdk.dir=/caminho/do/android-sdk" > local.properties
 gradle :app:assembleRelease      # gera app/build/outputs/apk/release/app-release.apk
-gradle :app:testDebugUnitTest    # 37 testes: parser, cálculo, card, toggles, cores, endereços, histórico, auto-análise, inflação das telas
+gradle :app:testDebugUnitTest    # 49 testes: parser, cálculo, card, toggles, cores, endereços, histórico, auto-análise, inflação das telas
 ```
 
 Assinatura: `keystore/radar.jks`, alias `radar`, senha `radar2026` (definida em `app/build.gradle.kts`). Mantenha o mesmo keystore para atualizar o app no celular sem desinstalar.

@@ -55,6 +55,51 @@
                 android:textColor="@color/textDim"
                 android:textSize="12.5sp" />
 
+            <!-- Botão único: liga e desliga a leitura automática, já aplicando na hora. -->
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/swAuto"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_field"
+                android:paddingStart="10dp"
+                android:paddingEnd="6dp"
+                android:text="Leitura automática ligada"
+                android:textColor="@color/text"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="De quanto em quanto tempo ele lê sozinho"
+                android:textColor="@color/textDim"
+                android:textSize="11sp" />
+
+            <EditText
+                android:id="@+id/etAutoIntervalo"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_field"
+                android:hint="Segundos entre leituras (2 a 120) — padrão 6"
+                android:inputType="number"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:textColor="@color/text"
+                android:textColorHint="@color/textDim"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:lineSpacingExtra="2dp"
+                android:text="Com a leitura ligada, a cada X segundos o app captura a tela do Uber/99 sozinho — sem tocar em nada. O card aberto segura a leitura até sumir (tempo do card, seção 3); depois disso conta o intervalo de novo."
+                android:textColor="@color/textDim"
+                android:textSize="11sp" />
+
             <TextView
                 android:id="@+id/btnAcessibilidade"
                 android:layout_width="match_parent"
@@ -73,6 +118,28 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="Ajustes › Acessibilidade › Apps instalados › Radar de Ganhos › Ativar. O botão flutuante R$ aparece por cima de qualquer app."
+                android:textColor="@color/textDim"
+                android:textSize="11sp" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/swQualquerApp"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_field"
+                android:paddingStart="10dp"
+                android:paddingEnd="6dp"
+                android:text="Auto-analisar também fora do Uber/99"
+                android:textColor="@color/textDim"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvDiag"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:lineSpacingExtra="2dp"
+                android:text="Diagnóstico da leitura automática: ainda sem leitura"
                 android:textColor="@color/textDim"
                 android:textSize="11sp" />
         </LinearLayout>
@@ -312,26 +379,6 @@
                         android:textSize="14sp" />
                 </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Auto-análise no Uber/99" />
-                    <com.google.android.material.switchmaterial.SwitchMaterial
-                        android:id="@+id/swAuto"
-                        android:layout_width="match_parent"
-                        android:layout_height="46dp"
-                        android:layout_marginTop="4dp"
-                        android:background="@drawable/bg_field"
-                        android:paddingStart="10dp"
-                        android:paddingEnd="6dp"
-                        android:text="Ligado"
-                        android:textColor="@color/textDim"
-                        android:textSize="12sp" />
-                </LinearLayout>
             </LinearLayout>
 
             <TextView
@@ -399,26 +446,6 @@
                         android:textSize="14sp" />
                 </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Espera entre leituras (s)" />
-                    <EditText
-                        android:id="@+id/etAutoIntervalo"
-                        android:layout_width="match_parent"
-                        android:layout_height="46dp"
-                        android:layout_marginTop="4dp"
-                        android:background="@drawable/bg_field"
-                        android:inputType="number"
-                        android:paddingStart="10dp"
-                        android:paddingEnd="10dp"
-                        android:textColor="@color/text"
-                        android:textSize="14sp" />
-                </LinearLayout>
             </LinearLayout>
 
             <TextView style="@style/Label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="Tamanho do card" />
@@ -625,11 +652,18 @@
                     android:textColor="@color/textDim"
                     android:textSize="11sp" />
 
-                <Space
+                <com.google.android.material.switchmaterial.SwitchMaterial
+                    android:id="@+id/swEnderecos"
                     android:layout_width="0dp"
-                    android:layout_height="1dp"
+                    android:layout_height="44dp"
                     android:layout_marginStart="8dp"
-                    android:layout_weight="1" />
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_field"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="2dp"
+                    android:text="Busca e desembarque"
+                    android:textColor="@color/textDim"
+                    android:textSize="11sp" />
             </LinearLayout>
 
             <TextView

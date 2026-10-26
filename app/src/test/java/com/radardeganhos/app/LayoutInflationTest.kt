@@ -47,6 +47,12 @@ class LayoutInflationTest {
         assertNotNull(v.findViewById<View>(R.id.btnSalvarCores))
         assertNotNull(v.findViewById<View>(R.id.tvHistoricoContagem))
         assertNotNull(v.findViewById<View>(R.id.btnAbrirHistorico))
+        assertNotNull(v.findViewById<View>(R.id.swQualquerApp))
+        assertNotNull(v.findViewById<View>(R.id.tvDiag))
+        // Botão único + intervalo no topo, e o switch de endereços no card.
+        assertNotNull(v.findViewById<View>(R.id.swAuto))
+        assertNotNull(v.findViewById<View>(R.id.etAutoIntervalo))
+        assertNotNull(v.findViewById<View>(R.id.swEnderecos))
     }
 
     @Test
@@ -98,6 +104,7 @@ class LayoutInflationTest {
         assertNotNull(v.findViewById<View>(R.id.tvHora))
         assertNotNull(v.findViewById<View>(R.id.tvKm))
         assertNotNull(v.findViewById<View>(R.id.tvCustos))
+        assertNotNull(v.findViewById<View>(R.id.tvEnderecos))
         assertNotNull(v.findViewById<View>(R.id.btnClose))
         assertNotNull(v.findViewById<View>(R.id.btnRepeat))
     }
