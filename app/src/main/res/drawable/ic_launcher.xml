@@ -4,22 +4,28 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Fundo preto arredondado -->
     <path
         android:fillColor="#0B0E13"
-        android:pathData="M0,0h108v108h-108z" />
+        android:pathData="M24,0h60a24,24 0 0 1 24,24v60a24,24 0 0 1 -24,24h-60a24,24 0 0 1 -24,-24v-60a24,24 0 0 1 24,-24z" />
+    <!-- Anel externo do radar -->
     <path
-        android:fillColor="#00D26A"
-        android:pathData="M54,10a44,44 0 1,0 0.1,0zM54,20a34,34 0 1,1 -0.1,0z" />
+        android:fillColor="#FF9500"
+        android:pathData="M54,12a40,40 0 1,0 0.1,0zM54,17a35,35 0 1,1 -0.1,0z" />
+    <!-- Anel interno -->
     <path
-        android:fillColor="#00D26A"
-        android:pathData="M54,32a22,22 0 1,0 0.1,0zM54,42a12,12 0 1,1 -0.1,0z" />
+        android:fillColor="#FF9500"
+        android:pathData="M54,25a27,27 0 1,0 0.1,0zM54,30a22,22 0 1,1 -0.1,0z" />
+    <!-- Agulha do radar -->
     <path
-        android:fillColor="#00D26A"
-        android:pathData="M54,50a4,4 0 1,0 0.1,0z" />
+        android:fillColor="#FFC531"
+        android:pathData="M54,52L82,28L60,56z" />
+    <!-- Centro -->
     <path
-        android:fillColor="#00D26A"
-        android:pathData="M54,54L86,26L60,58z" />
+        android:fillColor="#FFC531"
+        android:pathData="M54,47a5,5 0 1,0 0.1,0z" />
+    <!-- Base -->
     <path
-        android:fillColor="#12E07A"
-        android:pathData="M20,84h68v8h-68z" />
+        android:fillColor="#E68500"
+        android:pathData="M26,86h56v8h-56z" />
 </vector>

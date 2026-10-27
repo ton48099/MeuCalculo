@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,29 +31,24 @@ class LayoutInflationTest {
     @Test
     fun inflaTelaPrincipalComTodosOsCampos() {
         val v = LayoutInflater.from(themed()).inflate(R.layout.activity_main, null)
-        assertNotNull(v.findViewById<View>(R.id.etPreco))
-        assertNotNull(v.findViewById<View>(R.id.etConsumo))
-        assertNotNull(v.findViewById<View>(R.id.etManut))
-        assertNotNull(v.findViewById<View>(R.id.etMetaKm))
-        assertNotNull(v.findViewById<View>(R.id.etMetaHora))
-        assertNotNull(v.findViewById<View>(R.id.swAuto))
-        assertNotNull(v.findViewById<View>(R.id.btnSalvar))
-        assertNotNull(v.findViewById<View>(R.id.btnGaleria))
-        assertNotNull(v.findViewById<View>(R.id.tvResultado))
-        // Limites de cor e histórico
-        assertNotNull(v.findViewById<View>(R.id.etHoraRuim))
-        assertNotNull(v.findViewById<View>(R.id.etHoraBoa))
-        assertNotNull(v.findViewById<View>(R.id.etKmRuim))
-        assertNotNull(v.findViewById<View>(R.id.etKmBoa))
-        assertNotNull(v.findViewById<View>(R.id.btnSalvarCores))
-        assertNotNull(v.findViewById<View>(R.id.tvHistoricoContagem))
-        assertNotNull(v.findViewById<View>(R.id.btnAbrirHistorico))
-        assertNotNull(v.findViewById<View>(R.id.swQualquerApp))
-        assertNotNull(v.findViewById<View>(R.id.tvDiag))
-        // Botão único + intervalo no topo, e o switch de endereços no card.
-        assertNotNull(v.findViewById<View>(R.id.swAuto))
-        assertNotNull(v.findViewById<View>(R.id.etAutoIntervalo))
-        assertNotNull(v.findViewById<View>(R.id.swEnderecos))
+        assertNotNull(v.findViewById<View>(R.id.btnToggleLeitura))
+        assertNotNull(v.findViewById<View>(R.id.btnCustos))
+        assertNotNull(v.findViewById<View>(R.id.btnCardConfig))
+        assertNotNull(v.findViewById<View>(R.id.tvStatus))
+        // A leitura automática agora mora em "Card e Cores" e a seção 4 (conferir uma
+        // leitura) foi removida da tela principal — nem os ids existem mais.
+        val textos = mutableListOf<String>()
+        fun coletar(view: View) {
+            if (view is TextView) view.text?.toString()?.let { textos.add(it) }
+            if (view is android.view.ViewGroup) {
+                for (i in 0 until view.childCount) coletar(view.getChildAt(i))
+            }
+        }
+        coletar(v)
+        assertTrue(textos.none { it.contains("CONFERIR UMA LEITURA") })
+        assertTrue(textos.none { it.contains("LEITURA AUTOMÁTICA") })
+        assertTrue(textos.any { it.contains("1 · CUSTOS") })
+        assertTrue(textos.any { it.contains("2 · CARD E CORES") })
     }
 
     @Test
@@ -69,6 +65,8 @@ class LayoutInflationTest {
         assertNotNull(item.findViewById<View>(R.id.tvItemKm))
         assertNotNull(item.findViewById<View>(R.id.tvItemOrigem))
         assertNotNull(item.findViewById<View>(R.id.tvItemDestino))
+        // Miniatura do print (some quando a corrida não tem imagem).
+        assertNotNull(item.findViewById<View>(R.id.imgPrint))
     }
 
     @Test
@@ -104,9 +102,10 @@ class LayoutInflationTest {
         assertNotNull(v.findViewById<View>(R.id.tvHora))
         assertNotNull(v.findViewById<View>(R.id.tvKm))
         assertNotNull(v.findViewById<View>(R.id.tvCustos))
-        assertNotNull(v.findViewById<View>(R.id.tvEnderecos))
-        assertNotNull(v.findViewById<View>(R.id.btnClose))
         assertNotNull(v.findViewById<View>(R.id.btnRepeat))
+        // Itens novos: R$/minuto e a linha de busca/desembarque.
+        assertNotNull(v.findViewById<View>(R.id.tvMinuto))
+        assertNotNull(v.findViewById<View>(R.id.tvEnderecos))
     }
 
     @Test
@@ -120,5 +119,49 @@ class LayoutInflationTest {
         assertEquals(2.1, lido.metaKm, 0.001)
         assertEquals(false, lido.autoScan)
         assertEquals(6.19 / 9.5 + 0.25, lido.custoKm, 0.001)
+
+        // Leitura multi-tela e print da corrida também sobrevivem ao reinício.
+        Prefs.save(
+            ctx,
+            Settings(modoDesktop = true, printCorrida = false, cardGravity = "topo-direita")
+        )
+        val novo = Prefs.load(ctx)
+        assertTrue(novo.modoDesktop)
+        assertFalse(novo.printCorrida)
+        assertEquals("topo-direita", novo.cardGravity)
+        // Valores de fábrica.
+        val padrao = Settings()
+        assertFalse(padrao.modoDesktop)
+        assertTrue(padrao.printCorrida)
+    }
+
+    /** A tela "Card e Cores" infla com todos os itens que ela controla. */
+    @Test
+    fun inflaTelaDeConfiguracaoDoCard() {
+        val v = LayoutInflater.from(themed()).inflate(R.layout.activity_card_config, null)
+        listOf(
+            R.id.chkVeredito, R.id.chkEnderecos, R.id.chkMeta, R.id.chkTrajeto,
+            R.id.chkReler, R.id.chkValorKm, R.id.chkValorHora, R.id.chkValorMinuto,
+            R.id.chkValoresTotais, R.id.chkCustoTotal, R.id.chkLucro, R.id.chkEmpilhar,
+            R.id.seekDuracao, R.id.seekOpacidade, R.id.txtDuracaoValor,
+            R.id.txtKmBom, R.id.txtKmRuim, R.id.txtHoraBom, R.id.txtHoraRuim,
+            R.id.txtMinutoBom, R.id.txtMinutoRuim,
+            R.id.chkAutoScan, R.id.etAutoIntervalo, R.id.chkModoDesktop,
+            R.id.chkPrintCorrida, R.id.tvDiag,
+            R.id.btnPosTopoEsquerda, R.id.btnPosTopoCentro,
+            R.id.btnPosTopoDireita, R.id.btnPosCentro
+        ).forEach { id -> assertNotNull(v.findViewById<View>(id)) }
+    }
+
+    /** A tela de custos redesenhada mantém todos os campos + o resumo do topo. */
+    @Test
+    fun inflaTelaDeCustosComResumoECampos() {
+        val v = LayoutInflater.from(themed()).inflate(R.layout.activity_custos, null)
+        listOf(
+            R.id.etPreco, R.id.etConsumo, R.id.etManut, R.id.etComissao,
+            R.id.etFixoHora, R.id.etEspera, R.id.etRetorno,
+            R.id.etMetaKm, R.id.etMetaHora,
+            R.id.tvResumoCusto, R.id.btnSalvar, R.id.btnVoltar
+        ).forEach { id -> assertNotNull(v.findViewById<View>(id)) }
     }
 }

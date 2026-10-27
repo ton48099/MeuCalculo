@@ -61,14 +61,17 @@ object PanelBinder {
             }
         }
 
-        v.findViewById<TextView>(R.id.tvEnderecos).apply {
-            val o = a.card.origem
-            val d = a.card.destino
-            text = buildString {
-                if (o != null) append("Busca: ").append(o)
-                if (o != null && d != null) append('\n')
-                if (d != null) append("Desembarque: ").append(d)
-            }
+        // R$/minuto (terceira métrica, ligada pelo "Valor/Minuto").
+        v.findViewById<TextView>(R.id.tvMinuto).apply {
+            text = "gera ${Report.money(a.brutoMinuto)} por minuto · ${Report.tempo(a.minTotal)}"
+            setTextColor(ColorRules.corMinuto(a.brutoMinuto, s))
+        }
+
+        // Busca e desembarque, quando o card traz o trajeto.
+        v.findViewById<TextView>(R.id.tvEnderecos).text = buildString {
+            a.card.origem?.let { append("Busca: $it") }
+            if (a.card.origem != null && a.card.destino != null) append('\n')
+            a.card.destino?.let { append("Desembarque: $it") }
         }
 
         // Lucro líquido da corrida = valor − custos configurados.
@@ -126,10 +129,10 @@ object PanelBinder {
         v.findViewById<View>(R.id.colKm).visibility = vis(s.cardKm)
         v.findViewById<View>(R.id.rowMetricas).visibility = vis(s.cardHora || s.cardKm)
         v.findViewById<View>(R.id.tvBruto).visibility = vis(s.cardResumo)
+        v.findViewById<View>(R.id.tvMinuto).visibility = vis(s.cardMinuto)
         val enderecos = v.findViewById<TextView>(R.id.tvEnderecos)
-        // Sem endereço identificado, a linha some em vez de mostrar vazia.
-        val temEndereco = !enderecos.text.isNullOrBlank()
-        enderecos.visibility = if (s.cardEnderecos && temEndereco) View.VISIBLE else View.GONE
+        // Sem endereço identificado, a linha some em vez de aparecer vazia.
+        enderecos.visibility = if (s.cardEnderecos && enderecos.text.isNotBlank()) View.VISIBLE else View.GONE
         v.findViewById<View>(R.id.boxLucro).visibility = vis(s.cardLucro)
         v.findViewById<View>(R.id.tvResumo).visibility = vis(s.cardTrajeto)
         v.findViewById<View>(R.id.tvCustos).visibility = vis(s.cardCustos)

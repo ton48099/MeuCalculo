@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/panelRoot"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:layout_margin="10dp"
     android:background="@drawable/bg_panel"
+    android:clickable="true"
+    android:focusable="true"
     android:orientation="vertical"
     android:padding="14dp">
 
@@ -24,7 +27,7 @@
             android:paddingEnd="10dp"
             android:paddingBottom="4dp"
             android:text="—"
-            android:textColor="@color/green"
+            android:textColor="@color/orange"
             android:textSize="11sp"
             android:textStyle="bold" />
 
@@ -38,16 +41,6 @@
             android:text=""
             android:textColor="@color/textDim"
             android:textSize="11sp" />
-
-        <TextView
-            android:id="@+id/btnClose"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
-            android:background="@drawable/bg_chip"
-            android:gravity="center"
-            android:text="✕"
-            android:textColor="@color/textDim"
-            android:textSize="14sp" />
     </LinearLayout>
 
     <!-- R$/hora e R$/km DESTA corrida -->
@@ -86,7 +79,7 @@
                     android:layout_height="wrap_content"
                     android:includeFontPadding="false"
                     android:text="R$ 0,00"
-                    android:textColor="@color/green"
+                    android:textColor="@color/orange"
                     android:textSize="28sp"
                     android:textStyle="bold" />
 
@@ -139,6 +132,16 @@
         android:textColor="@color/textDim"
         android:textSize="10sp" />
 
+    <!-- R$/minuto, quando ligado no "Valor/Minuto" das configurações. -->
+    <TextView
+        android:id="@+id/tvMinuto"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:text=""
+        android:textColor="@color/textDim"
+        android:textSize="11sp" />
+
     <!-- Endereços do card: onde buscar e onde deixar o passageiro. -->
     <TextView
         android:id="@+id/tvEnderecos"
@@ -181,7 +184,7 @@
                 android:layout_height="wrap_content"
                 android:includeFontPadding="false"
                 android:text="R$ 0,00"
-                android:textColor="@color/green"
+                android:textColor="@color/orange"
                 android:textSize="20sp"
                 android:textStyle="bold" />
         </LinearLayout>
@@ -244,7 +247,7 @@
         android:paddingTop="10dp"
         android:paddingBottom="10dp"
         android:text="↻ Reler esta tela"
-        android:textColor="@color/green"
+        android:textColor="@color/text"
         android:textSize="12sp"
         android:textStyle="bold" />
 </LinearLayout>

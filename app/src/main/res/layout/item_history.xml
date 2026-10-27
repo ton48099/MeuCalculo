@@ -1,18 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="10dp"
-    android:background="@drawable/bg_card"
-    android:orientation="vertical"
-    android:padding="13dp">
+    android:layout_marginBottom="12dp"
+    app:cardBackgroundColor="@color/surface"
+    app:cardCornerRadius="14dp"
+    app:cardElevation="1dp"
+    app:strokeColor="@color/stroke"
+    app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="vertical"
+        android:padding="16dp">
 
+        <!-- Valor -->
         <TextView
             android:id="@+id/tvItemValor"
             android:layout_width="wrap_content"
@@ -20,75 +25,146 @@
             android:includeFontPadding="false"
             android:text="R$ 0,00"
             android:textColor="@color/text"
-            android:textSize="21sp"
+            android:textSize="22sp"
             android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/tvItemMeta"
-            android:layout_width="0dp"
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginBottom="10dp"
+            android:background="@color/stroke" />
+
+        <!-- R$/h e R$/km -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:gravity="end"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvItemHora"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="R$ 0,00/h"
+                android:textColor="@color/text"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvItemKm"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:text="R$ 0,00/km"
+                android:textColor="@color/text"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Trajeto -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📍"
+                android:textColor="@color/textDim"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tvItemOrigem"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:lineSpacingExtra="2dp"
+                android:text="Busca: —"
+                android:textColor="@color/textDim"
+                android:textSize="13sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_marginEnd="6dp"
+                android:text="→"
+                android:textColor="@color/textDim"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tvItemDestino"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:lineSpacingExtra="2dp"
+                android:text="Desembarque: —"
+                android:textColor="@color/textDim"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- Botões Embarque / Desembarque -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMapOrigem"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Embarque"
+                android:textColor="@color/text"
+                android:textSize="11sp"
+                android:padding="8dp"
+                app:cornerRadius="6dp"
+                app:strokeColor="@color/stroke"
+                app:strokeWidth="1dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMapDestino"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Desembarque"
+                android:textColor="@color/text"
+                android:textSize="11sp"
+                android:padding="8dp"
+                app:cornerRadius="6dp"
+                app:strokeColor="@color/stroke"
+                app:strokeWidth="1dp" />
+        </LinearLayout>
+
+        <!-- Lucro -->
+        <TextView
+            android:id="@+id/tvItemLucro"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
             android:text=""
             android:textColor="@color/textDim"
-            android:textSize="10.5sp" />
+            android:textSize="11sp" />
+
+        <!-- Print da tela no momento em que o card foi lido -->
+        <ImageView
+            android:id="@+id/imgPrint"
+            android:layout_width="match_parent"
+            android:layout_height="130dp"
+            android:layout_marginTop="10dp"
+            android:background="@color/bg"
+            android:clickable="true"
+            android:contentDescription="Print da tela da corrida"
+            android:focusable="true"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
     </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:orientation="horizontal">
-
-        <TextView
-            android:id="@+id/tvItemHora"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="R$ 0,00/h"
-            android:textColor="@color/text"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tvItemKm"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="end"
-            android:text="R$ 0,00/km"
-            android:textColor="@color/text"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/tvItemOrigem"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="9dp"
-        android:lineSpacingExtra="2dp"
-        android:text="Busca: —"
-        android:textColor="@color/text"
-        android:textSize="12sp" />
-
-    <TextView
-        android:id="@+id/tvItemDestino"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
-        android:lineSpacingExtra="2dp"
-        android:text="Desembarque: —"
-        android:textColor="@color/text"
-        android:textSize="12sp" />
-
-    <TextView
-        android:id="@+id/tvItemLucro"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text=""
-        android:textColor="@color/textDim"
-        android:textSize="10.5sp" />
-</LinearLayout>
+</com.google.android.material.card.MaterialCardView>

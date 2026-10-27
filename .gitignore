@@ -5,3 +5,9 @@ local.properties
 .idea/
 *.iml
 captures/
+
+# So o APK da versao atual vai para o repositorio (os antigos ficam locais)
+dist/RadarDeGanhos-1.0.apk
+dist/RadarDeGanhos-1.1.apk
+dist/RadarDeGanhos-1.2.apk
+dist/RadarDeGanhos-1.7.apk

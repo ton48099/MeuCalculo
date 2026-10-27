@@ -48,9 +48,23 @@ object ColorRules {
         }
     }
 
+    /** Semáforo do R$/minuto, na mesma escala do R$/hora (0,58/min ≈ R$ 35/h). */
+    fun toneMinuto(valorMinuto: Double, s: Settings): Tone {
+        val v = centavos(valorMinuto)
+        val bom = centavos(s.semaforoMinutoBom)
+        val ruim = centavos(s.semaforoMinutoRuim)
+        return when {
+            v >= bom -> Tone.BOM
+            v <= ruim -> Tone.RUIM
+            else -> Tone.NEUTRO
+        }
+    }
+
     fun corHora(valorHora: Double, s: Settings): Int = cor(toneHora(valorHora, s))
 
     fun corKm(valorKm: Double, s: Settings): Int = cor(toneKm(valorKm, s))
+
+    fun corMinuto(valorMinuto: Double, s: Settings): Int = cor(toneMinuto(valorMinuto, s))
 
     fun cor(t: Tone): Int = Color.parseColor(
         when (t) {

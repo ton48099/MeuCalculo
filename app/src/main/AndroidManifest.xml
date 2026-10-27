@@ -25,6 +25,20 @@
             android:label="Histórico de corridas"
             android:parentActivityName=".MainActivity" />
 
+        <activity
+            android:name=".CustosActivity"
+            android:exported="false"
+            android:label="Custos do seu carro"
+            android:parentActivityName=".MainActivity" />
+
+        <activity
+            android:name=".CardConfigActivity"
+            android:exported="false"
+            android:label="Card flutuante"
+            android:parentActivityName=".MainActivity" />
+
+
+
         <service
             android:name=".RideAccessibilityService"
             android:exported="true"

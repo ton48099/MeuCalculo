@@ -1,101 +1,153 @@
 # Radar de Ganhos
 
-APK Android que lê o card de corrida do **Uber** e da **99** em qualquer tela (app, print, foto, post do Facebook) e mostra, em 1–2 segundos, **quanto vale a corrida por hora e por km já descontando os custos**.
+App Android que lê o card de corrida do **Uber** e da **99** em qualquer tela (app, print, foto, post do Facebook) e mostra, em 1–2 segundos, **quanto vale a corrida por hora e por km já descontando os custos**.
 
-## APK pronto
-
-`dist/RadarDeGanhos-1.3.apk` — 50 MB, assinado (esquema v2), Android 11+ (API 30).
-Instala por cima da 1.2, mantendo as configurações salvas.
+## Versão atual
 
 ```
 pacote: com.radardeganhos.app
-versão: 1.3 (versionCode 4)
+versão: 1.8 (versionCode 9)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
 ```
 
-### Novidades da 1.3
-
-- **Leitura automática de verdade**: um relógio interno de 1,2 s decide sozinho quando capturar a tela — não depende mais de o Uber/99 emitir evento, que era o motivo de só ler quando você tocava no botão. Só gasta captura/OCR quando o texto da tela tem sinal de card (R$, km, min).
-- **Botão único no topo** liga e desliga a leitura automática, já aplicando na hora (sem botão Salvar); o campo do intervalo ficou logo abaixo, na mesma seção 1.
-- **Configurações do card valem na prática**: cada switch, o tamanho, o intervalo e a duração salvam e aplicam assim que você mexe.
-- **Busca e desembarque no card flutuante**, com o switch junto dos demais itens (sem trajeto identificado a linha some, em vez de aparecer vazia).
+O APK sai do próprio Android Studio (aba **Build › Build App Bundle(s) / APK(s) › Build APK(s)**)
+ou pela linha de comando em `app/build/outputs/apk/release/`. Instala por cima das versões
+anteriores mantendo as configurações salvas.
 
 ## Instalação
 
 1. Copie o APK para o celular (WhatsApp, Drive, cabo USB).
 2. Toque no arquivo e permita "instalar de fontes desconhecidas" para o app usado na cópia.
 3. Abra o **Radar de Ganhos**.
-4. Toque em **Abrir Acessibilidade e ativar** → Ajustes › Acessibilidade › Apps instalados › **Radar de Ganhos** → ativar.
-5. O botão flutuante **R$** aparece por cima de qualquer app.
+4. Toque em **▶ ATIVAR LEITURA DE TELA** → Ajustes › Acessibilidade › Apps instalados › **Radar de Ganhos** → ativar.
+5. O botão flutuante **R$** aparece por cima de qualquer app. O mesmo botão **desliga e religa** a leitura sem precisar voltar aos ajustes.
+
+## Telas
+
+O app tem menu inferior com **Início** e **Histórico**; na Início:
+
+| Seção | O que tem |
+|---|---|
+| botão grande no topo | **ATIVAR / DESLIGAR** a leitura (ligação imediata) |
+| **1 · CUSTOS** | preço do litro, consumo, manutenção, comissão, aluguel, espera, retorno e metas |
+| **2 · CARD E CORES** | **leitura automática** (liga/desliga, intervalo, modo desktop, print e diagnóstico), duração na tela, **posição**, opacidade, tamanho da fonte, empilhar, itens visíveis e limites do semáforo |
+| **STATUS** | se o serviço está ativo |
 
 ## Como usar
 
-- **Card do Uber/99**: com a **leitura automática ligada** (seção 1, botão único) o app captura a tela sozinho a cada X segundos — o campo logo abaixo do botão escolhe o intervalo (2–120 s, padrão 6 s). O toque no **R$** continua funcionando a qualquer momento, mesmo com a leitura automática desligada.
+- **Card do Uber/99**: quando o card aparecer, toque no **R$** (ou deixe a leitura automática, ligada por padrão).
 - **Foto, print, WhatsApp, Facebook**: deixe a imagem na tela e toque no **R$**. O app lê a tela inteira, não só os apps de corrida.
-- **Painel**: toque em **↻ Reler** para reler, **✕** para fechar; arraste o painel pelo cabeçalho e o botão R$ para onde quiser.
-- Sem o botão flutuante, a tela do app também analisa **foto da galeria** e **texto colado**.
+- **Painel**: toque nele para fechar; arraste pelo cabeçalho (segurar ali pausa o fechamento automático) e arraste o botão R$ para onde quiser.
+- **Modo desktop (Smart Connect / DeX)**: ligue em *Card e Cores › Modo desktop* e o **botão R$ e o card vão para a 2ª tela** — inclusive com **Uber e 99 abertos lado a lado**, um card em cima do outro.
+
+### Modo desktop (2ª tela)
+
+Com a opção ligada, a cada ciclo o serviço procura um app de corrida em **qualquer display**
+(`getWindowsOnAllDisplays`), captura aquela tela (`takeScreenshot(displayId)`) e lê o card lá. Regras:
+
+1. modo desktop **desligado** → tudo acontece na tela principal (comportamento original);
+2. ligado e Uber/99 aberto na 2ª tela → a leitura vai para essa tela;
+3. ligado sem card na 2ª tela → volta para a tela principal.
+
+**O botão R$ e o card aparecem na 2ª tela.** O overlay daquela tela é montado com a receita do próprio
+Android (CTS do `AccessibilityService`): `createDisplayContext` + `createWindowContext`
+(`TYPE_ACCESSIBILITY_OVERLAY`), anexado àquele display. Se o fabricante recusar a janela, o overlay
+cai para o celular e a linha do **diagnóstico** diz “a tela externa recusou a janela do Radar” — nada
+é perdido, o card simplesmente sai no aparelho.
+
+**Dois apps lado a lado.** Com Uber e 99 abertos na mesma tela, o app recorta a janela de cada um
+(`Recortes`) e lê separado: saem dois cards empilhados, um por oferta. Se não der para dividir com
+segurança, volta ao OCR da tela inteira, como antes.
+
+A captura passa pelo limite de frequência do Android (1 por segundo) e o relógio tem um watchdog de
+25 s: se uma captura travar, a leitura se destrava sozinha em vez de parar até reiniciar o serviço.
 
 ## O que o painel mostra
 
 - **Gera por hora** e **por km nesta corrida** em destaque — os valores da oferta atual, com semáforo de cor: **vermelho** = ruim, **branco** = neutro, **verde** = bom.
+- Opcionalmente **R$/minuto**, com o semáforo próprio.
+- **Busca** e **desembarque**, quando o card mostra o trajeto (sem inventar endereço).
 - Logo abaixo, **lucro líquido da corrida**: `valor − custos`, com o líquido por hora e por km.
 - Trajeto: deslocamento até o cliente e viagem (km e tempo de cada um), km usado no custo.
 - Combustível, manutenção, comissão, custo fixo e custo total.
 - **Mínimo que a corrida precisaria pagar** para bater sua meta, e a diferença que falta.
 - Nota de 0 a 100% (100% = exatamente na meta) e veredito.
 
-Todos os itens podem ser ligados/desligados individualmente nas configurações.
+Cada item é ligado/desligado individualmente na tela **2 · CARD E CORES** — dá para esconder tudo e
+mostrar só o que importa na hora.
 
 Veredito: **ÓTIMA** (≥120% da meta) · **BOA** (≥100%) · **MÉDIA** (≥80%) · **RUIM** (<80%).
 
-### Cores do R$/hora e do R$/km
+### Cores (semáforo)
 
 | Métrica | Vermelho (ruim) | Branco (neutro) | Verde (bom) |
 |---|---|---|---|
 | R$/hora | até 35,00 | 35,01 a 44,99 | 45,00 ou mais |
 | R$/km | até 1,30 | 1,31 a 1,79 | 1,80 ou mais |
+| R$/minuto | até 0,58 | 0,59 a 0,74 | 0,75 ou mais |
 
-Os quatro limites são editáveis na seção **4 · CORES** da tela do app (o padrão acima é o que vem de fábrica).
+Os limites são editáveis na tela **2 · CARD E CORES** (os valores acima são o padrão de fábrica),
+e são os mesmos que pintam o card flutuante, o histórico e o resultado.
 
-## Configurações (tela do app)
+## Leitura automática
 
-| Campo | Usado para |
-|---|---|
-| Preço do litro / consumo km/l | custo de combustível por km |
-| Manutenção R$/km | óleo, pneu, freio, revisão, depreciação |
-| Comissão do app % | quando o valor do card não vem líquido |
-| Aluguel/fixo R$/hora | locação, diária, seguro rateado |
-| Espera extra (min) | tempo parado no embarque |
-| Retorno extra (%) | km de volta ao ponto forte |
-| Meta R$/km e R$/hora | base do veredito e do valor mínimo |
-| Leitura automática | botão único ligar/desligar; o app lê a tela sozinho, sem tocar em nada |
-| De quanto em quanto tempo | intervalo entre leituras automáticas (2–120 s, padrão 6 s) |
-| Ficar na tela (s) | quanto tempo o card fica aberto; **0** = só fecha no ✕ |
-| Tamanho do card | Pequeno 0,85× · Normal 1× · Grande 1,15× · Extra 1,3× |
-| Itens do card | veredito, R$/hora, R$/km, valor/km/tempo, busca e desembarque, lucro líquido, custos, trajeto, meta, botão reler |
-| Limites de cor | R$/hora vermelho até / verde a partir de, R$/km vermelho até / verde a partir de |
+O serviço tem um relógio interno de 1,2 s e, a cada X segundos (intervalo configurado em
+*Card e Cores*, padrão **2 s**, de 2 a 120), aperta o **botão de leitura manual sozinho** — em
+QUALQUER tela (Uber, 99, print, galeria, Facebook…). Não existe lista de apps liberados: quem decide se há card na
+tela é o parser depois da leitura, não o pacote do app. O fluxo é:
+
+1. a cada intervalo ele dispara, **exceto enquanto o card de resultado está na tela**;
+2. quando o card some, recomeça a contar o intervalo do zero;
+3. lê de novo, sem repetir o mesmo card. (Fora do intervalo: só o botão manual.)
+
+Cada tentativa deixa uma linha no **diagnóstico**, dentro de *Card e Cores* — e a linha se **atualiza
+sozinha a cada 1,5 s** enquanto a tela está aberta: além da última leitura, mostra o que a automação
+está fazendo *agora* (pronta, esperando o intervalo, card aberto na tela, leitura em andamento…). Se a leitura
+parar, é ali que está o motivo.
+
+O intervalo é **salvo enquanto você digita**, não só ao sair do campo: mude o número e ele já vale.
+
+### Área lida: abaixo do card
+
+O card nasce no **topo** da tela (padrão) justamente por causa disto: **a leitura começa na linha em que o
+card termina e vai até o fim da tela**. O que fica acima dele não é lido.
+
+Sem esse corte, o OCR lia a tela inteira e o parser — que pega o maior R$ do texto — devolvia o **saldo do app**
+como se fosse o valor da corrida (e às vezes o próprio card do Radar). Agora o topo do app (saldo, menu,
+notificação) e o card do Radar ficam fora da leitura. A folga e o limite saem da posição real da janela, então
+o corte acompanha o card se você arrastá-lo para outro lugar.
+
+Se o card ocupar quase toda a tela (fonte grande com todos os itens), não sobra área útil: nesse caso a leitura
+volta a ser a tela inteira em vez de ler uma faixa de 20 px.
 
 ## Histórico de corridas
 
-Cada card analisado (botão flutuante, auto-análise ou teste de texto/foto) entra no **histórico**, na seção **5** da tela inicial. Cada item mostra:
+Cada card analisado (botão flutuante ou auto-análise) entra no **Histórico**.
+Cada item mostra:
 
 - valor total da corrida;
 - **R$/km** e **R$/hora**, pintados com as mesmas regras de cor do card;
 - **busca** (endereço de origem) e **desembarque** (endereço de destino), quando o card mostra o trajeto;
-- lucro líquido estimado, app de origem e data/hora da leitura.
+- lucro líquido estimado, app de origem e data/hora da leitura;
+- o **print da tela** no instante em que o card foi lido (miniatura no item; toque para ver em tela cheia).
 
-O topo resume a quantidade de corridas e as médias de R$/hora e R$/km. O histórico fica em `SharedPreferences` no próprio aparelho (até 300 corridas), sem servidor; o mesmo card lido duas vezes em até 2 minutos conta como uma só leitura, e o botão **Limpar histórico** apaga tudo.
+O print é salvo como JPEG no próprio aparelho, reduzido para 1080 px de largura. A opção **“Salvar print da tela de cada corrida”** fica em *Card e Cores* e vem ligada; desligue se o armazenamento ou a memória pesarem — o histórico continua funcionando sem as imagens. **Limpar histórico** apaga as corridas e os prints.
+
+O topo resume a quantidade de corridas e as médias. O histórico fica em `SharedPreferences` no próprio
+aparelho (até 300 corridas), sem servidor; o mesmo card lido duas vezes em até 2 minutos conta como uma
+só leitura, e o botão **Limpar histórico** apaga tudo.
 
 ## Cálculo
 
 ```
-km total   = deslocamento + viagem  (+ retorno %)
-tempo      = deslocamento + viagem  (+ espera)
+km total    = deslocamento + viagem  (+ retorno %)
+tempo       = deslocamento + viagem  (+ espera)
 combustível = km × preço_litro / consumo
 manutenção  = km × R$/km
 fixo        = horas × R$/hora
 líquido     = valor − (combustível + manutenção + comissão + fixo)
-R$/h        = líquido / horas
-R$/km       = líquido / km total
+R$/h        = valor / horas
+R$/km       = valor / km total
+R$/min      = valor / minutos
 nota        = min(R$/km ÷ meta_km, R$/h ÷ meta_h) × 100
 valor mínimo = max(meta_km × km, meta_h × horas) + custos
 ```
@@ -107,22 +159,28 @@ Os cards são lidos com regras próprias para os dois formatos que aparecem nas 
 
 ## Privacidade
 
-O OCR é o ML Kit embarcado, roda no próprio aparelho. O app não tem servidor, não guarda capturas e não envia texto para lugar nenhum.
+O OCR é o ML Kit embarcado, roda no próprio aparelho. O app não tem servidor e não envia texto para
+lugar nenhum. As capturas ficam apenas no armazenamento interno, e **só** quando a opção de print está
+ligada — “Limpar histórico” apaga todas.
 
 ## Recompilar
 
-Requisitos: JDK 17, Android SDK 34, Gradle 8.7.
+Requisitos: JDK 17, Android SDK 34 (o wrapper usa Gradle 9.6).
 
 ```bash
-echo "sdk.dir=/caminho/do/android-sdk" > local.properties
-gradle :app:assembleRelease      # gera app/build/outputs/apk/release/app-release.apk
-gradle :app:testDebugUnitTest    # 49 testes: parser, cálculo, card, toggles, cores, endereços, histórico, auto-análise, inflação das telas
+./gradlew :app:assembleRelease      # gera app/build/outputs/apk/release/app-release.apk
+./gradlew :app:testDebugUnitTest    # 73 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas
 ```
 
-Assinatura: `keystore/radar.jks`, alias `radar`, senha `radar2026` (definida em `app/build.gradle.kts`). Mantenha o mesmo keystore para atualizar o app no celular sem desinstalar.
+Se o Android Studio estiver instalado, o JDK dele serve (`C:\Program Files\Android\Android Studio\jbr`);
+na linha de comando use `-Dorg.gradle.java.home=/caminho/do/jdk17`.
+
+Assinatura: `keystore/radar.jks`, alias `radar`, senha `radar2026` (definida em `app/build.gradle.kts`).
+Mantenha o mesmo keystore para atualizar o app no celular sem desinstalar.
 
 ## Limites conhecidos
 
 - Exige **Android 11+** para capturar a tela via serviço de acessibilidade (sem pedir MediaProjection).
 - Em apps com proteção de tela (`FLAG_SECURE`, típico de bancos) a captura vem preta — os cards do Uber/99 não usam essa proteção.
 - A qualidade do OCR depende da fonte e do zoom do card; em card muito pequeno, aproxime antes de tocar no R$.
+- O endereço no histórico depende do OCR manter o endereço em linha própria logo abaixo do tempo/distância — é o formato dos cards das suas capturas; num layout diferente, o campo aparece como "não identificado".

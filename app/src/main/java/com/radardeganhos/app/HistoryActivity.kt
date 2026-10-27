@@ -1,13 +1,18 @@
 package com.radardeganhos.app
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -77,34 +82,81 @@ class HistoryActivity : AppCompatActivity() {
             "média ${Report.money(hora)}/h · ${Report.money(km)}/km"
     }
 
-    companion object {
+    @SuppressLint("SetTextI18n")
+    private fun bind(item: View, r: RideRecord, s: Settings) {
+        item.findViewById<TextView>(R.id.tvItemValor).text = Report.money(r.valor)
 
-        private val formato = SimpleDateFormat("dd/MM · HH:mm", Locale.getDefault())
-
-        /** Preenche um item do histórico (separado da tela para poder ser testado). */
-        @SuppressLint("SetTextI18n")
-        fun bind(item: View, r: RideRecord, s: Settings) {
-            item.findViewById<TextView>(R.id.tvItemValor).text = Report.money(r.valor)
-
-            val app = r.app ?: "leitura"
-            item.findViewById<TextView>(R.id.tvItemMeta).text =
-                "$app · ${formato.format(Date(r.at))} · ${Report.km(r.km)}"
-
-            item.findViewById<TextView>(R.id.tvItemHora).apply {
-                text = "${Report.money(r.brutoHora)}/h"
-                setTextColor(ColorRules.corHora(r.brutoHora, s))
-            }
-            item.findViewById<TextView>(R.id.tvItemKm).apply {
-                text = "${Report.money(r.brutoKm)}/km"
-                setTextColor(ColorRules.corKm(r.brutoKm, s))
-            }
-
-            item.findViewById<TextView>(R.id.tvItemOrigem).text =
-                "Busca: ${r.origem ?: "não identificada"}"
-            item.findViewById<TextView>(R.id.tvItemDestino).text =
-                "Desembarque: ${r.destino ?: "não identificado"}"
-            item.findViewById<TextView>(R.id.tvItemLucro).text =
-                "Lucro líquido estimado: ${Report.money(r.liquido)}"
+        item.findViewById<TextView>(R.id.tvItemHora).apply {
+            text = "${Report.money(r.brutoHora)}/h"
+            setTextColor(ColorRules.corHora(r.brutoHora, s))
         }
+        item.findViewById<TextView>(R.id.tvItemKm).apply {
+            text = "${Report.money(r.brutoKm)}/km"
+            setTextColor(ColorRules.corKm(r.brutoKm, s))
+        }
+
+        item.findViewById<TextView>(R.id.tvItemOrigem).text =
+            "Busca: ${r.origem ?: "não identificada"}"
+        item.findViewById<TextView>(R.id.tvItemDestino).text =
+            "Desembarque: ${r.destino ?: "não identificado"}"
+
+        // Botões embarque/desembarque abrem no Google Maps
+        val btnOrigem = item.findViewById<MaterialButton>(R.id.btnMapOrigem)
+        val btnDestino = item.findViewById<MaterialButton>(R.id.btnMapDestino)
+
+        val temOrigem = r.origem?.isNotBlank() == true
+        val temDestino = r.destino?.isNotBlank() == true
+        btnOrigem.visibility = if (temOrigem) View.VISIBLE else View.GONE
+        btnDestino.visibility = if (temDestino) View.VISIBLE else View.GONE
+
+        btnOrigem.setOnClickListener { abrirMapa(r.origem ?: "") }
+        btnDestino.setOnClickListener { abrirMapa(r.destino ?: "") }
+
+        item.findViewById<TextView>(R.id.tvItemLucro).text =
+            "Lucro líquido estimado: ${Report.money(r.liquido)}"
+
+        // Print da tela: miniatura no item, tela cheia ao tocar.
+        val img = item.findViewById<ImageView>(R.id.imgPrint)
+        val thumb = r.print?.let { Prints.carregar(this, it, 480) }
+        if (thumb != null) {
+            img.setImageBitmap(thumb)
+            img.visibility = View.VISIBLE
+            img.setOnClickListener { mostrarPrint(r.print!!) }
+        } else {
+            img.setImageDrawable(null)
+            img.visibility = View.GONE
+        }
+    }
+
+    /** Print em tela cheia. */
+    private fun mostrarPrint(nome: String) {
+        val bmp = Prints.carregar(this, nome, 1440) ?: return
+        val img = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setBackgroundColor(resources.getColor(R.color.bg, theme))
+            setPadding(0, 0, 0, 0)
+            setImageBitmap(bmp)
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Print da corrida")
+            .setView(img)
+            .setPositiveButton("Fechar", null)
+            .setOnDismissListener { bmp.recycle() }
+            .create()
+        dialog.show()
+        dialog.window?.setLayout(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT
+        )
+    }
+
+    private fun abrirMapa(endereco: String) {
+        val uri = Uri.parse("https://www.google.com/maps/search/?api=1&query=${Uri.encode(endereco)}")
+        val intent = Intent(Intent.ACTION_VIEW, uri)
+        intent.setPackage("com.google.android.apps.maps")
+        if (intent.resolveActivity(packageManager) == null) {
+            intent.setPackage(null) // fallback: abre no navegador
+        }
+        startActivity(intent)
     }
 }

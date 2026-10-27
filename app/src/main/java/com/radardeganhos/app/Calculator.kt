@@ -27,6 +27,8 @@ data class RideAnalysis(
     val liquidoKm: Double,
     val brutoHora: Double,
     val brutoKm: Double,
+    /** Quanto esta corrida gera por minuto (bruto), para o "Valor/Minuto". */
+    val brutoMinuto: Double,
     /** Valor bruto mínimo para atingir a meta de R$/km. */
     val minimoKm: Double,
     /** Valor bruto mínimo para atingir a meta de R$/hora. */
@@ -84,6 +86,7 @@ object Calculator {
             liquidoKm = liquidoKm,
             brutoHora = card.valor / horas,
             brutoKm = card.valor / kmCobrado,
+            brutoMinuto = card.valor / minTotal,
             minimoKm = minimoKm,
             minimoHora = minimoHora,
             valorMinimo = maxOf(minimoKm, minimoHora),

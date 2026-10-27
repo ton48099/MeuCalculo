@@ -2,7 +2,9 @@ package com.radardeganhos.app
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.Context
 import android.graphics.Bitmap
+import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -14,13 +16,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 
 /**
  * Serviço que permite ler a tela (API 30+) e desenhar o botão flutuante.
  * Nenhum dado sai do aparelho: a captura é analisada na memória e descartada.
+ *
+ * Duas telas: com o "modo desktop" ligado, o card também é procurado na tela externa
+ * do Smart Connect/DeX — onde o Uber/99 roda em janela — e a captura vai para aquele
+ * display. O card de resultado continua aparecendo no celular.
  */
 class RideAccessibilityService : AccessibilityService() {
 
@@ -28,9 +36,20 @@ class RideAccessibilityService : AccessibilityService() {
         @Volatile
         var instance: RideAccessibilityService? = null
             private set
+
+        /** Frequência do relógio automático (não é o intervalo entre leituras). */
+        private const val POLL_MS = 1200L
     }
 
-    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    /**
+     * A leitura está ligada? Diferente de "serviço conectado": o botão único da tela
+     * principal liga e desliga por aqui sem precisar sair para os ajustes do sistema.
+     */
+    @Volatile
+    var ativo: Boolean = false
+        private set
+
+    private var scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val handler = Handler(Looper.getMainLooper())
     private var screenReader: ScreenReader? = null
     private var overlay: OverlayController? = null
@@ -38,71 +57,238 @@ class RideAccessibilityService : AccessibilityService() {
     private var scanning = false
     private var lastScanAt = 0L
     private var lastPackage: String? = null
-    /** Frequência do relógio automático (não é o intervalo entre leituras). */
-    private val pollMs = 1200L
     /** Assinatura do último card analisado, para não repetir a mesma leitura. */
     private var lastCardSignature: String? = null
+
+    /** Display que a próxima captura deve usar (tela principal ou a do modo desktop). */
+    @Volatile
+    private var displayAlvo: Int = MultiTela.TELA_PRINCIPAL
+
+    /** Overlay da tela externa: é ele que leva o botão R$ e o card para a 2ª tela. */
+    private var overlayExterno: OverlayController? = null
+
+    /** Cache da varredura das telas externas (varrer janelas a cada tique custa caro). */
+    private var conferiuExternaEm = 0L
+    private var cacheExterno: Pair<String, Int>? = null
+
+    /** Quando o overlay externo foi reavaliado (a tela pode ligar depois do modo desktop). */
+    private var atualizouOverlayEm = 0L
+
+    /** Desde quando a leitura atual está rodando — watchdog de captura que não volta. */
+    private var scanningDesde = 0L
+
+    /** Último tique do relógio automático: prova, na tela, de que ele está vivo. */
+    @Volatile
+    private var ultimoTique = 0L
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
+        iniciar()
+    }
+
+    /**
+     * Liga o botão flutuante e o relógio da leitura automática. Chamado ao conectar
+     * e também quando o motorista reativa depois de desligar pelo botão único.
+     */
+    private fun iniciar() {
+        if (!scope.isActive) scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
         if (screenReader == null) screenReader = ScreenReader()
         if (overlay == null) {
             overlay = OverlayController(
                 service = this,
-                onAnalyze = { analyzeScreen(manual = true) },
+                displayId = MultiTela.TELA_PRINCIPAL,
+                // O botão do celular lê a tela do celular.
+                onAnalyze = { analyzeScreen(manual = true, tela = MultiTela.TELA_PRINCIPAL) },
                 // Card sumiu: o intervalo entre leituras volta a contar daqui.
                 onPanelHide = { lastScanAt = SystemClock.elapsedRealtime() }
             )
         }
         overlay?.showBubble()
-        // O relógio da leitura automática. Roda mesmo sem evento do sistema,
-        // porque o Uber/99 nem sempre emite mudança de janela quando o card aparece.
+        atualizarOverlayExterno()
+        ativo = true
         handler.removeCallbacks(poller)
-        handler.postDelayed(poller, pollMs)
+        handler.postDelayed(poller, POLL_MS)
+    }
+
+    /**
+     * Cria (ou derruba) o overlay da tela externa — mesma janela de acessibilidade do
+     * celular, só que montada naquele display. Se o fabricante recusar, o card continua
+     * saindo no celular e o diagnóstico explica o porquê.
+     */
+    private fun atualizarOverlayExterno() {
+        atualizouOverlayEm = SystemClock.elapsedRealtime()
+        val desejado = if (Prefs.load(this).modoDesktop) displayExternoDisponivel() else null
+        val atual = overlayExterno
+        if (desejado == null) {
+            if (atual != null) {
+                atual.removeAll()
+                overlayExterno = null
+            }
+            return
+        }
+        if (atual != null && atual.tela == desejado) return
+        atual?.removeAll()
+        overlayExterno = null
+        val novo = OverlayController(
+            service = this,
+            displayId = desejado,
+            onAnalyze = { analyzeScreen(manual = true, tela = desejado) },
+            onPanelHide = { lastScanAt = SystemClock.elapsedRealtime() }
+        )
+        if (novo.disponivel) {
+            novo.showBubble()
+            overlayExterno = novo
+            AutoDiag.anotar(this, "botão R$ aberto na tela externa (display $desejado)", forcar = true)
+        } else {
+            novo.removeAll()
+            AutoDiag.anotar(
+                this,
+                "a tela externa recusou a janela do Radar (display $desejado) — o card sai no celular",
+                forcar = true
+            )
+        }
+    }
+
+    /** Primeira tela que não é a do celular, se houver conectada agora. */
+    private fun displayExternoDisponivel(): Int? = try {
+        val dm = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        dm.displays.firstOrNull { it.displayId != MultiTela.TELA_PRINCIPAL }?.displayId
+    } catch (t: Throwable) {
+        null
+    }
+
+    /** Os dois overlays juntos: o card aberto em qualquer tela vale como card aberto. */
+    private fun painelVisivel(): Boolean =
+        overlay?.isPanelVisible == true || overlayExterno?.isPanelVisible == true
+
+    private fun painelAbertoHa(now: Long): Long =
+        minOf(overlay?.panelAbertoHa(now) ?: Long.MAX_VALUE, overlayExterno?.panelAbertoHa(now) ?: Long.MAX_VALUE)
+
+    /**
+     * Uma linha com o que a leitura automática está fazendo AGORA — atualizada ao vivo
+     * na tela de Card e Cores, para não depender do motorista adivinhar o que travou.
+     */
+    fun estadoAoVivo(s: Settings): String {
+        if (!ativo) return "leitura desligada — toque em ATIVAR LEITURA DE TELA"
+        val now = SystemClock.elapsedRealtime()
+        val motivo = AutoScanPolicy.motivoParaNaoLer(
+            s = s,
+            pkg = pacoteAtivo() ?: lastPackage ?: "?",
+            now = now,
+            lastScanAt = lastScanAt,
+            scanning = scanning,
+            panelVisible = painelVisivel(),
+            panelAbertoHaMs = painelAbertoHa(now)
+        )
+        val tela = if (displayAlvo == MultiTela.TELA_PRINCIPAL) "celular" else "2ª tela"
+        val onde = if (overlayExterno?.disponivel == true) " · botão R$ na 2ª tela" else ""
+        val relogio = if (ultimoTique == 0L) "relógio parado (feche e abra o app)"
+        else "relógio rodando · último tique há ${(now - ultimoTique) / 1000}s"
+        val base = when {
+            scanning -> "lendo a tela agora · tela: $tela$onde"
+            motivo == null -> "pronta · lê a cada ${s.autoIntervaloSeg}s · tela: $tela$onde"
+            motivo.startsWith("esperando") -> "$motivo para a próxima leitura · tela: $tela$onde"
+            else -> "$motivo · tela: $tela$onde"
+        }
+        return "$base · $relogio"
     }
 
     /** Tique do relógio automático: 1,2 em 1,2 s decide se está na hora de ler. */
     private val poller = object : Runnable {
         override fun run() {
-            tickAutomatico()
-            handler.postDelayed(this, pollMs)
+            if (ativo) tickAutomatico()
+            handler.postDelayed(this, POLL_MS)
         }
     }
 
     private fun tickAutomatico() {
-        val pkg = pacoteAtivo() ?: lastPackage ?: return
-        if (pkg == packageName) return
-        lastPackage = pkg
-
         val settings = Prefs.load(this)
         val now = SystemClock.elapsedRealtime()
+        ultimoTique = now
+
+        // Captura que nunca voltou: destrava sozinho, senão a leitura morre até
+        // alguém reiniciar o serviço. É o tipo de coisa que "parou de funcionar".
+        if (scanning && now - scanningDesde > 25_000L) {
+            scanning = false
+            AutoDiag.anotar(this, "leitura presa há 25s — destravada", forcar = true)
+        }
+        // A tela externa pode ter sido ligada (ou desligada) depois do modo desktop.
+        if (settings.modoDesktop && now - atualizouOverlayEm > 5_000L) atualizarOverlayExterno()
+
+        val alvo = resolverAlvo(settings)
+        val pkg = alvo?.first
+        // O próprio Radar em primeiro plano: não faz sentido ler a tela do app.
+        if (pkg == packageName) return
+        if (alvo != null) {
+            lastPackage = alvo.first
+            displayAlvo = alvo.second
+        }
+
         val motivo = AutoScanPolicy.motivoParaNaoLer(
             s = settings,
-            pkg = pkg,
+            pkg = pkg ?: lastPackage ?: "?",
             now = now,
             lastScanAt = lastScanAt,
             scanning = scanning,
-            panelVisible = overlay?.isPanelVisible == true,
-            panelAbertoHaMs = overlay?.panelAbertoHa(now) ?: Long.MAX_VALUE
+            panelVisible = painelVisivel(),
+            panelAbertoHaMs = painelAbertoHa(now)
         )
-        when {
-            motivo == null -> {
-                // O intervalo venceu: vale a pena olhar a tela antes de capturar.
-                lastScanAt = now
-                if (!telaPareceCard()) {
-                    AutoDiag.anotar(this, "$pkg · nada de card na tela agora")
-                } else {
-                    handler.removeCallbacks(autoScan)
-                    handler.postDelayed(autoScan, 150L)
-                }
-            }
-            // O ritmo ("esperando") e o estado normal (desligada/fora da lista) não
-            // poluem o diagnóstico; o que trava de verdade sim.
-            motivo != "auto-análise desligada" && motivo != "app fora da lista" &&
-                !motivo.startsWith("esperando") ->
-                AutoDiag.anotar(this, "$pkg · $motivo")
+        if (motivo == null) {
+            // Intervalo venceu: dispara EXATAMENTE o que o botão manual faria.
+            lastScanAt = now
+            AutoDiag.anotar(this, "${pkg ?: lastPackage ?: "tela"} · lendo sozinho agora", forcar = true)
+            handler.removeCallbacks(autoScan)
+            handler.postDelayed(autoScan, 150L)
+        } else if (!motivo.startsWith("esperando")) {
+            // Tudo que barra a leitura aparece no diagnóstico, nunca em silêncio.
+            AutoDiag.anotar(this, "${pkg ?: lastPackage ?: "?"} · $motivo")
         }
+    }
+
+    /**
+     * Escolhe de onde ler: o app de corrida da tela externa (modo desktop) tem
+     * prioridade; senão, a tela principal. Devolve null quando não há nada a ler.
+     */
+    private fun resolverAlvo(s: Settings): Pair<String, Int>? =
+        MultiTela.alvo(s.modoDesktop, corridaNaTelaExterna(s), pacoteAtivo() ?: lastPackage)
+
+    /** Varredura das telas externas, com cache — só roda com o modo desktop ligado. */
+    private fun corridaNaTelaExterna(s: Settings): Pair<String, Int>? {
+        if (!s.modoDesktop) return null
+        val agora = SystemClock.elapsedRealtime()
+        if (agora - conferiuExternaEm < 1500L) return cacheExterno
+        conferiuExternaEm = agora
+        cacheExterno = procurarCorridaEmTelaExterna()
+        return cacheExterno
+    }
+
+    /**
+     * App de corrida aberto numa tela que não é a do celular (modo desktop do Smart
+     * Connect / DeX). Só funciona com a janela recuperável, que a configuração do
+     * serviço já libera (flagRetrieveInteractiveWindows).
+     */
+    private fun procurarCorridaEmTelaExterna(): Pair<String, Int>? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+        val janelas = try {
+            windowsOnAllDisplays
+        } catch (t: Throwable) {
+            null
+        } ?: return null
+
+        for (i in 0 until janelas.size()) {
+            val displayId = janelas.keyAt(i)
+            if (displayId == MultiTela.TELA_PRINCIPAL) continue
+            for (janela in janelas.valueAt(i)) {
+                val pkg = try {
+                    janela.root?.packageName?.toString()
+                } catch (t: Throwable) {
+                    null
+                }
+                if (pkg != null && AutoScanPolicy.isRideApp(pkg)) return pkg to displayId
+            }
+        }
+        return null
     }
 
     /** Pacote em primeiro plano, lido da árvore de acessibilidade (sem depender de evento). */
@@ -113,74 +299,35 @@ class RideAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * Gasto barato antes de capturar: se o texto da tela não tem nenhum sinal de card
-     * (R$, km, min), não vale tirar screenshot e rodar OCR. Se a árvore vier vazia ou
-     * bloqueada, devolve true e a leitura acontece do jeito normal.
+     * Só acompanha qual app está em primeiro plano. Quem dispara a leitura é o
+     * relógio de [POLL_MS]: disparar por evento não funcionava na prática (Uber/99
+     * quase nunca emitem evento quando o card aparece) e ainda varria a árvore de
+     * acessibilidade a cada frame de animação, sem nunca virar leitura.
      */
-    private fun telaPareceCard(): Boolean {
-        val texto = try {
-            val root = rootInActiveWindow ?: return true
-            val sb = StringBuilder()
-            fun andar(n: android.view.accessibility.AccessibilityNodeInfo?, d: Int) {
-                if (n == null || d > 12 || sb.length > 4000) return
-                n.text?.let { if (it.isNotEmpty()) sb.append(it).append('\n') }
-                for (i in 0 until n.childCount) andar(try { n.getChild(i) } catch (t: Throwable) { null }, d + 1)
-            }
-            andar(root, 0)
-            sb.toString()
-        } catch (t: Throwable) {
-            return true
-        }
-        if (texto.length < 80) return true
-        val b = texto.lowercase()
-        return b.contains("r\$") || b.contains("rs ") ||
-            (b.contains("km") && (b.contains("min") || Regex("""\d\s*h\b""").containsMatchIn(b)))
-    }
-
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        val e = event ?: return
-        val pkg = e.packageName?.toString() ?: return
+        val pkg = event?.packageName?.toString() ?: return
         if (pkg == packageName) return
         lastPackage = pkg
-
-        if (e.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
-            e.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
-        ) return
-
-        val settings = Prefs.load(this)
-        val now = SystemClock.elapsedRealtime()
-        val motivo = AutoScanPolicy.motivoParaNaoLer(
-            s = settings,
-            pkg = pkg,
-            now = now,
-            lastScanAt = lastScanAt,
-            scanning = scanning,
-            panelVisible = overlay?.isPanelVisible == true,
-            panelAbertoHaMs = overlay?.panelAbertoHa(now) ?: Long.MAX_VALUE
-        )
-        if (motivo != null) {
-            // "esperando Xs" é o ritmo normal; o que trava é anotado para o diagnóstico.
-            if (!motivo.startsWith("esperando")) AutoDiag.anotar(this, "$pkg · $motivo")
-            return
-        }
-        AutoDiag.anotar(this, "tentando ler em $pkg", forcar = true)
-        lastScanAt = now
-        handler.removeCallbacks(autoScan)
-        handler.postDelayed(autoScan, 900L)
     }
 
-    private val autoScan = Runnable { analyzeScreen(manual = false) }
+    private val autoScan = Runnable { analyzeScreen(manual = false, tela = null) }
 
     override fun onInterrupt() {
         scanning = false
     }
 
-    /** Captura a tela atual, lê com OCR e mostra o painel de resultado. */
-    fun analyzeScreen(manual: Boolean) {
+    /**
+     * Captura uma tela, lê com OCR e mostra o painel de resultado.
+     *
+     * @param tela qual tela ler (0 = celular, outro = tela externa). null = deixa a
+     *             política decidir, que é o que a auto-análise usa.
+     */
+    fun analyzeScreen(manual: Boolean, tela: Int? = null) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             if (manual) overlay?.toast("A leitura de tela requer Android 11 ou superior")
             return
         }
+        if (!ativo && !manual) return
         val capacidade = serviceInfo?.capabilities ?: 0
         if (capacidade and AccessibilityServiceInfo.CAPABILITY_CAN_TAKE_SCREENSHOT == 0) {
             if (manual) overlay?.toast("Reative o serviço de acessibilidade para liberar a captura de tela")
@@ -188,64 +335,128 @@ class RideAccessibilityService : AccessibilityService() {
             return
         }
         if (scanning) return
+
+        val settings = Prefs.load(this)
+        val resolvido = resolverAlvo(settings)
+        val displayId = tela ?: resolvido?.second ?: displayAlvo
+        val pkgLido = resolvido?.first ?: lastPackage
+        // Sem app identificado o botão manual orienta o motorista; a automática
+        // lê mesmo assim (é o botão apertado sozinho — o parser é quem decide
+        // se há card na tela, não o pacote).
+        if (pkgLido == null && tela == null && manual) {
+            overlay?.toast("Abra o card do Uber ou da 99 para eu ler")
+            return
+        }
+        if (pkgLido != null) lastPackage = pkgLido
+        displayAlvo = displayId
+
         scanning = true
+        scanningDesde = SystemClock.elapsedRealtime()
+        val naTelaPrincipal = displayId == MultiTela.TELA_PRINCIPAL
+        val nomeTela = if (naTelaPrincipal) "" else " (2ª tela)"
+        val overlayTela = if (naTelaPrincipal) overlay else overlayExterno
 
         scope.launch {
             var bmp: Bitmap? = null
             try {
-                overlay?.hideForCapture()
+                // Esconde o overlay da tela que vai ser capturada, senão ele vira parte da print.
+                (overlayTela ?: overlay)?.hideForCapture()
                 delay(160L)
-                bmp = captureScreen()
-                overlay?.restoreAfterCapture()
+                bmp = captureScreen(displayId)
+                if (bmp == null) {
+                    // O sistema limita a frequência das capturas; a auto-análise
+                    // pode cair logo após outra leitura. Tenta mais uma vez.
+                    delay(360L)
+                    bmp = captureScreen(displayId)
+                }
+                (overlayTela ?: overlay)?.restoreAfterCapture()
 
                 if (bmp == null) {
                     if (manual) overlay?.toast("Não consegui capturar a tela. Verifique a permissão de acessibilidade.")
-                    else AutoDiag.anotar(this@RideAccessibilityService, "captura de tela falhou", forcar = true)
+                    else AutoDiag.anotar(
+                        this@RideAccessibilityService,
+                        "captura falhou$nomeTela",
+                        forcar = true
+                    )
                     return@launch
                 }
+                val captura = bmp ?: return@launch
 
                 val reader = screenReader ?: ScreenReader().also { screenReader = it }
-                val text = try {
-                    reader.read(bmp)
-                } catch (t: Throwable) {
-                    if (manual) overlay?.toast("Falha no OCR: ${t.message}")
-                    else AutoDiag.anotar(this@RideAccessibilityService, "falha no OCR: ${t.message ?: "?"}", forcar = true)
-                    return@launch
+
+                // A leitura começa abaixo do card do Radar. Sem isso o OCR lia o
+                // próprio card e o topo do app (saldo, menu) — e o parser, que pega
+                // o maior R$ do texto, devolvia o saldo como se fosse a corrida.
+                val limiteLeitura = limiteDaLeitura(displayId, settings)
+                val abaixoDoCard = inicioNaCaptura(displayId, captura, limiteLeitura)
+
+                // Uber e 99 lado a lado: recorta a janela de cada um e lê separado.
+                val recortes = recortesPorJanela(captura, displayId, limiteLeitura)
+                var (cards, falhaOcr) = lerCards(recortes, reader, pkgLido)
+                recortes.forEach { if (it !== captura) it.recycle() }
+                if (cards.isEmpty()) {
+                    // Ou não havia janelas para dividir, ou o corte não deu certo:
+                    // nesse caso o resto da tela é lido do jeito de sempre — só que
+                    // sem o pedaço de cima, onde estão o card e o saldo.
+                    val areaLida = recorteAbaixoDaTela(captura, abaixoDoCard)
+                    val inteira = lerCards(listOf(areaLida ?: captura), reader, pkgLido)
+                    areaLida?.recycle()
+                    if (inteira.first.isNotEmpty()) cards = inteira.first
+                    else falhaOcr = falhaOcr ?: inteira.second
                 }
 
-                val settings = Prefs.load(this@RideAccessibilityService)
-                val card = RideParser.parse(text, lastPackage)
-                if (card == null) {
+                if (falhaOcr != null && cards.isEmpty()) {
+                    if (manual) overlay?.toast("Falha no OCR: $falhaOcr")
+                    else AutoDiag.anotar(this@RideAccessibilityService, "falha no OCR: $falhaOcr", forcar = true)
+                    return@launch
+                }
+                if (cards.isEmpty()) {
                     if (manual) overlay?.toast("Nenhum card de corrida nesta tela")
                     else AutoDiag.anotar(
                         this@RideAccessibilityService,
-                        "sem card em ${lastPackage ?: "?"}",
+                        "sem card em ${pkgLido ?: "?"}$nomeTela",
                         forcar = true
                     )
                     return@launch
                 }
 
-                // Auto-análise não repete o mesmo card; a leitura manual sempre responde.
-                val signature = cardSignature(card)
+                // Auto-análise não repete o mesmo conjunto de cards; a manual sempre responde.
+                val signature = cards.map { cardSignature(it) }.sorted().joinToString(",")
                 if (!manual && signature == lastCardSignature) {
-                    AutoDiag.anotar(this@RideAccessibilityService, "mesmo card de ${lastPackage ?: "?"}")
+                    AutoDiag.anotar(this@RideAccessibilityService, "mesmo card de ${pkgLido ?: "?"}")
                     return@launch
                 }
                 lastCardSignature = signature
 
-                val analysis = Calculator.analyze(card, settings)
+                val analises = cards.map { Calculator.analyze(it, settings) }
                 // Guarda no histórico (o mesmo card lido duas vezes não duplica).
-                RideHistory.record(this@RideAccessibilityService, analysis)
+                var primeiroRegistrado = false
+                analises.forEach { analysis ->
+                    if (RideHistory.record(this@RideAccessibilityService, analysis) && !primeiroRegistrado) {
+                        primeiroRegistrado = true
+                        // Print da tela da corrida, quando a opção está ligada.
+                        if (settings.printCorrida) {
+                            val nome = withContext(Dispatchers.IO) {
+                                Prints.salvar(this@RideAccessibilityService, captura)
+                            }
+                            if (nome != null) {
+                                RideHistory.attachPrint(this@RideAccessibilityService, nome)
+                            }
+                        }
+                    }
+                }
                 if (!manual) {
                     AutoDiag.anotar(
                         this@RideAccessibilityService,
-                        "card lido em ${lastPackage ?: "?"}",
+                        "${analises.size} card(s) lidos em ${pkgLido ?: "?"}$nomeTela",
                         forcar = true
                     )
                 }
-                overlay?.showResult(analysis, settings)
+                // O resultado aparece na tela que foi lida; sem overlay ali, cai no celular.
+                val destino = overlayTela?.takeIf { it.disponivel } ?: overlay
+                destino?.showResults(analises, settings)
             } catch (t: Throwable) {
-                overlay?.restoreAfterCapture()
+                (overlayTela ?: overlay)?.restoreAfterCapture()
                 if (manual) overlay?.toast("Erro: ${t.message}")
                 else AutoDiag.anotar(this@RideAccessibilityService, "erro: ${t.message ?: "?"}", forcar = true)
             } finally {
@@ -255,15 +466,154 @@ class RideAccessibilityService : AccessibilityService() {
         }
     }
 
+    /**
+     * Fim do card + folga na tela que está sendo lida, em pixels de tela
+     * (0 = sem card no caminho: lê desde o topo, como antes).
+     */
+    private fun limiteDaLeitura(displayId: Int, s: Settings): Int {
+        val dono = if (displayId == MultiTela.TELA_PRINCIPAL) overlay else overlayExterno
+        return dono?.inicioAbaixoDoCard(s) ?: 0
+    }
+
+    /** O mesmo limite em pixels da captura, que pode ter outra resolução (0 = sem corte). */
+    private fun inicioNaCaptura(displayId: Int, captura: Bitmap, limiteNaTela: Int): Int {
+        if (limiteNaTela <= 0) return 0
+        val metricas = metricasDaTela(displayId) ?: return 0
+        return AreaLeitura.inicioNaCaptura(
+            alturaCaptura = captura.height,
+            alturaTela = metricas.heightPixels,
+            inicioNaTela = limiteNaTela
+        )
+    }
+
+    /** O pedaço da captura abaixo de [inicio]; null quando é para ler a tela inteira. */
+    private fun recorteAbaixoDaTela(captura: Bitmap, inicio: Int): Bitmap? {
+        if (inicio <= 0 || inicio >= captura.height) return null
+        return try {
+            Bitmap.createBitmap(captura, 0, inicio, captura.width, captura.height - inicio)
+        } catch (t: Throwable) {
+            null
+        }
+    }
+
+    /**
+     * Recorta a janela de cada app de corrida da captura da tela externa. Com o Uber
+     * e a 99 abertos lado a lado isso separa os dois cards, que um OCR da tela inteira
+     * misturaria. Devolve vazio quando não dá para dividir (um app só, ou sem janelas).
+     *
+     * @param limiteNaTela limite da leitura (px de tela): cada janela é cortada nele,
+     *        então também aqui o topo do app não entra na conta.
+     */
+    private fun recortesPorJanela(captura: Bitmap, displayId: Int, limiteNaTela: Int): List<Bitmap> {
+        if (displayId == MultiTela.TELA_PRINCIPAL) return emptyList()
+        val janelas = try {
+            windowsOnAllDisplays?.get(displayId)
+        } catch (t: Throwable) {
+            null
+        } ?: return emptyList()
+
+        val metricas = metricasDaTela(displayId) ?: return emptyList()
+        // Janela que sobrar menor que isso não vale um OCR próprio.
+        val alturaMinima = metricas.heightPixels / 20
+
+        // Uma janela por app: se o mesmo app tiver duas janelas, fica só a primeira.
+        val porApp = LinkedHashMap<String, android.graphics.Rect>()
+        for (janela in janelas) {
+            val pkg = try {
+                janela.root?.packageName?.toString()
+            } catch (t: Throwable) {
+                null
+            } ?: continue
+            if (!AutoScanPolicy.isRideApp(pkg)) continue
+            val retangulo = android.graphics.Rect()
+            try {
+                janela.getBoundsInScreen(retangulo)
+            } catch (t: Throwable) {
+                continue
+            }
+            if (retangulo.isEmpty) continue
+            if (limiteNaTela > 0) retangulo.top = maxOf(retangulo.top, limiteNaTela)
+            if (retangulo.height() < alturaMinima) continue
+            porApp.putIfAbsent(pkg, retangulo)
+        }
+        if (porApp.size < 2) return emptyList()
+
+        val retangulos = Recortes.dividir(
+            larguraCaptura = captura.width,
+            alturaCaptura = captura.height,
+            larguraTela = metricas.widthPixels,
+            alturaTela = metricas.heightPixels,
+            janelas = porApp.values.toList()
+        )
+        if (retangulos.isEmpty()) return emptyList()
+
+        val recortes = mutableListOf<Bitmap>()
+        for (retangulo in retangulos) {
+            val corte = try {
+                Bitmap.createBitmap(captura, retangulo.left, retangulo.top, retangulo.width(), retangulo.height())
+            } catch (t: Throwable) {
+                recortes.forEach { it.recycle() }
+                return emptyList()
+            }
+            recortes.add(corte)
+        }
+        return recortes
+    }
+
+    /** Tamanho de uma tela (para mapear as janelas para os pixels da captura). */
+    private fun metricasDaTela(displayId: Int): android.util.DisplayMetrics? {
+        return try {
+            val dm = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+            val display = dm.getDisplay(displayId) ?: return null
+            val metricas = android.util.DisplayMetrics()
+            display.getMetrics(metricas)
+            if (metricas.widthPixels > 0) metricas else null
+        } catch (t: Throwable) {
+            null
+        }
+    }
+
+    /**
+     * OCR + parser de cada pedaço de imagem. Devolve os cards encontrados e a última
+     * falha de OCR (para o diagnóstico não virar "sem card" quando o erro foi outro).
+     */
+    private suspend fun lerCards(
+        pedacos: List<Bitmap>,
+        reader: ScreenReader,
+        pkg: String?
+    ): Pair<List<RideCard>, String?> {
+        if (pedacos.isEmpty()) return emptyList<RideCard>() to null
+        val cards = mutableListOf<RideCard>()
+        var erro: String? = null
+        for (pedaco in pedacos) {
+            val paraOcr = pedaco.scaledForOcr()
+            val texto = try {
+                reader.read(paraOcr)
+            } catch (t: Throwable) {
+                erro = t.message ?: "?"
+                null
+            } finally {
+                if (paraOcr !== pedaco) paraOcr.recycle()
+            }
+            val card = texto?.let { RideParser.parse(it, pkg) } ?: continue
+            if (cards.none { cardSignature(it) == cardSignature(card) }) cards.add(card)
+        }
+        return cards to erro
+    }
+
     /** Repassa às configurações salvas para o card que já está na tela. */
     fun applySettings(s: Settings) {
         overlay?.applySettings(s)
+        overlayExterno?.applySettings(s)
+        // Modo desktop pode ter sido ligado/desligado agora: recria o overlay externo.
+        atualizarOverlayExterno()
     }
 
     private fun cardSignature(card: RideCard): String =
         "${card.app}|${card.valor}|${card.kmTotal}|${card.minTotal}"
 
-    private suspend fun captureScreen(): Bitmap? = suspendCancellableCoroutine { cont ->
+    /** Captura uma tela inteira (a principal ou a externa do modo desktop). */
+    private suspend fun captureScreen(displayId: Int): Bitmap? = suspendCancellableCoroutine { cont ->
         val callback = object : TakeScreenshotCallback {
             override fun onSuccess(screenshot: ScreenshotResult) {
                 val bitmap = try {
@@ -274,7 +624,7 @@ class RideAccessibilityService : AccessibilityService() {
                 } finally {
                     runCatching { screenshot.hardwareBuffer.close() }
                 }
-                if (cont.isActive) cont.resume(bitmap?.scaledForOcr())
+                if (cont.isActive) cont.resume(bitmap)
             }
 
             override fun onFailure(errorCode: Int) {
@@ -282,15 +632,44 @@ class RideAccessibilityService : AccessibilityService() {
             }
         }
         try {
-            takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, callback)
+            takeScreenshot(displayId, mainExecutor, callback)
         } catch (t: Throwable) {
             if (cont.isActive) cont.resume(null)
         }
     }
 
+    /**
+     * Desliga a leitura pelo botão único: some com o botão flutuante e o card, para
+     * o relógio automático, mas mantém o serviço vivo para religar sem sair do app.
+     */
+    fun desativar() {
+        ativo = false
+        handler.removeCallbacksAndMessages(null)
+        scanning = false
+        lastCardSignature = null
+        overlayExterno?.removeAll()
+        overlayExterno = null
+        overlay?.removeAll()
+        overlay = null
+        screenReader?.close()
+        screenReader = null
+        scope.cancel()
+        AutoDiag.anotar(this, "leitura desligada pelo botão", forcar = true)
+    }
+
+    /** Reativa a leitura: recarrega configurações, refaz o overlay e o relógio. */
+    fun ativar() {
+        if (!scope.isActive) scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+        iniciar()
+        AutoDiag.anotar(this, "leitura ligada pelo botão", forcar = true)
+    }
+
     override fun onDestroy() {
         instance = null
+        ativo = false
         handler.removeCallbacksAndMessages(null)
+        overlayExterno?.removeAll()
+        overlayExterno = null
         overlay?.removeAll()
         overlay = null
         lastCardSignature = null

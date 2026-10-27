@@ -5,14 +5,15 @@ import android.graphics.Color
 import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
 import android.view.View
+import android.widget.CheckBox
 import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
@@ -138,9 +139,9 @@ class CardConfigTest {
             ctx,
             Settings(
                 cardDuracaoSeg = 0,
-                cardEscala = 1.3f,
+                cardTamanhoFonte = "grande",
+                cardOpacidade = 70,
                 autoIntervaloSeg = 15,
-                autoQualquerApp = true,
                 cardKm = false,
                 cardLucro = false,
                 cardReler = false
@@ -148,8 +149,8 @@ class CardConfigTest {
         )
         val lido = Prefs.load(ctx)
         assertEquals(0, lido.cardDuracaoSeg)
-        assertTrue(lido.autoQualquerApp)
-        assertEquals(1.3f, lido.cardEscala, 0.001f)
+        assertEquals("grande", lido.cardTamanhoFonte)
+        assertEquals(70, lido.cardOpacidade)
         assertEquals(15, lido.autoIntervaloSeg)
         assertFalse(lido.cardKm)
         assertFalse(lido.cardLucro)
@@ -172,113 +173,124 @@ class CardConfigTest {
         // Já está lendo, ou o motorista está com o card aberto.
         assertFalse(AutoScanPolicy.shouldScan(s, pkg, agora, 0L, scanning = true, panelVisible = false))
         assertFalse(AutoScanPolicy.shouldScan(s, pkg, agora, 0L, scanning = false, panelVisible = true))
-        // Fora dos apps de corrida a auto-análise nunca dispara (o botão manual continua).
-        assertFalse(AutoScanPolicy.shouldScan(s, "com.facebook.katana", agora, 0L, false, false))
+        // A automática imita o botão: vale para QUALQUER tela (Uber, 99, print,
+        // galeria, Facebook…). Quem decide se há card é o parser depois da leitura.
+        assertTrue(AutoScanPolicy.shouldScan(s, "com.facebook.katana", agora, 0L, false, false))
+        // Continua valendo para os apps de corrida de sempre (inclusive o 99 Motorista,
+        // cujo pacote com.app99.driver faltava e trancava a leitura em silêncio).
+        assertTrue(AutoScanPolicy.shouldScan(s, "com.app99.driver", agora, 0L, false, false))
         // Desligada nas configurações.
         assertFalse(AutoScanPolicy.shouldScan(s.copy(autoScan = false), pkg, agora, 0L, false, false))
     }
 
+    /**
+     * Card aberto na tela segura a auto-leitura só até passar a graça: o motorista
+     * precisa de tempo para ler o card que apareceu, e depois a leitura volta.
+     */
     @Test
-    fun reconheceOsAppsDeCorridaPorPrefixo() {
-        assertTrue(AutoScanPolicy.isRideApp("com.ubercab.driver"))
-        assertTrue(AutoScanPolicy.isRideApp("com.ubercab"))
-        assertTrue(AutoScanPolicy.isRideApp("com.taxis99"))
-        assertTrue(AutoScanPolicy.isRideApp("com.taxis99.pro"))     // 99 Pro
-        assertTrue(AutoScanPolicy.isRideApp("com.taxis99.driver"))  // 99 motorista
-        assertFalse(AutoScanPolicy.isRideApp("com.whatsapp"))
-        assertFalse(AutoScanPolicy.isRideApp("com.ubercabx"))
-    }
+    fun cardAbertoSeguraAtePassarAGraca() {
+        val s = Settings(autoScan = true, autoIntervaloSeg = 5, cardDuracaoSeg = 12)
+        val pkg = "com.taxis99"
+        val agora = 50_000L
 
-    @Test
-    fun cardFixoNaoTravaALeituraAutomatica() {
-        val s = Settings(autoScan = true, autoIntervaloSeg = 6, cardDuracaoSeg = 0)
-        val pkg = "com.ubercab.driver"
-        val agora = 100_000L
-
-        // Card recém-aberto: segura um pouco para o motorista olhar os números.
         assertFalse(
-            AutoScanPolicy.shouldScan(
-                s, pkg, agora, 0L, scanning = false, panelVisible = true, panelAbertoHaMs = 3_000L
-            )
-        )
-        // Passou da graça: card fixo (duração 0) deixa de travar a leitura automática.
-        assertTrue(
-            AutoScanPolicy.shouldScan(
-                s, pkg, agora, 0L, scanning = false, panelVisible = true, panelAbertoHaMs = 11_000L
-            )
-        )
-        // Com duração de 12s a graça também é de 12s.
-        val comDuracao = s.copy(cardDuracaoSeg = 12)
-        assertFalse(
-            AutoScanPolicy.shouldScan(
-                comDuracao, pkg, agora, 0L, scanning = false, panelVisible = true, panelAbertoHaMs = 11_000L
-            )
+            AutoScanPolicy.shouldScan(s, pkg, agora, 0L, false, panelVisible = true, panelAbertoHaMs = 3_000L)
         )
         assertTrue(
-            AutoScanPolicy.shouldScan(
-                comDuracao, pkg, agora, 0L, scanning = false, panelVisible = true, panelAbertoHaMs = 13_000L
-            )
+            AutoScanPolicy.shouldScan(s, pkg, agora, 0L, false, panelVisible = true, panelAbertoHaMs = 13_000L)
         )
-        // Sem card na tela não há graça nenhuma.
-        assertTrue(AutoScanPolicy.shouldScan(s, pkg, agora, 0L, scanning = false, panelVisible = false))
+        assertTrue(
+            AutoScanPolicy.shouldScan(s, pkg, agora, 0L, false, panelVisible = false, panelAbertoHaMs = Long.MAX_VALUE)
+        )
     }
 
+    /**
+     * Abrir a tela de configurações não pode apagar o que já estava salvo. Antes o
+     * preenchimento disparava o salvamento com os valores do layout, e o motorista
+     * perdia os itens desligados (e, na tela de custos, até o preço do litro).
+     */
     @Test
-    fun cardMostraBuscaEDesembarqueEPodeOcultar() {
-        val s = Settings()
-        val comEndereco = card.copy(origem = "Av. Paulista, 1000", destino = "Rua Augusta, 250")
-
-        val v = LayoutInflater.from(themed()).inflate(R.layout.overlay_panel, null)
-        PanelBinder.bind(v, Calculator.analyze(comEndereco, s), s)
-        val tv = v.findViewById<TextView>(R.id.tvEnderecos)
-        assertEquals("Busca: Av. Paulista, 1000\nDesembarque: Rua Augusta, 250", tv.text.toString())
-        assertEquals(View.VISIBLE, tv.visibility)
-
-        // Desligado na configuração, some do card.
-        val oculto = LayoutInflater.from(themed()).inflate(R.layout.overlay_panel, null)
-        PanelBinder.bind(oculto, Calculator.analyze(comEndereco, s), s.copy(cardEnderecos = false))
-        assertEquals(View.GONE, oculto.findViewById<View>(R.id.tvEnderecos).visibility)
-    }
-
-    @Test
-    fun semEnderecoIdentificadoALinhaNaoAparece() {
-        val s = Settings()
-        val v = LayoutInflater.from(themed()).inflate(R.layout.overlay_panel, null)
-        // Card sem origem/destino (ex.: print só de preço): nada de linha vazia.
-        PanelBinder.bind(v, Calculator.analyze(card, s), s)
-        assertEquals(View.GONE, v.findViewById<View>(R.id.tvEnderecos).visibility)
-    }
-
-    @Test
-    fun opcaoDeEnderecoFicaSalva() {
+    fun abrirATelaNaoApagaAsConfiguracoesSalvas() {
         val ctx: Context = ApplicationProvider.getApplicationContext()
-        Prefs.save(ctx, Settings(cardEnderecos = false))
-        assertFalse(Prefs.load(ctx).cardEnderecos)
-        Prefs.save(ctx, Settings(cardEnderecos = true))
-        assertTrue(Prefs.load(ctx).cardEnderecos)
-    }
-
-    @Test
-    fun podeLerEmQualquerAppQuandoLiberado() {
-        val agora = 100_000L
-        assertTrue(
-            AutoScanPolicy.shouldScan(
-                Settings(autoQualquerApp = true), "com.whatsapp", agora, 0L, false, false
+        Prefs.save(
+            ctx,
+            Settings(
+                precoLitro = 6.5,
+                autoIntervaloSeg = 9,
+                cardKm = false,
+                cardReler = false,
+                cardEnderecos = false
             )
         )
-        val padrao = Settings()
+
+        val activity = Robolectric.buildActivity(CardConfigActivity::class.java).setup().get()
+
+        assertFalse(activity.findViewById<CheckBox>(R.id.chkValorKm).isChecked)
+        assertFalse(activity.findViewById<CheckBox>(R.id.chkReler).isChecked)
+        assertFalse(activity.findViewById<CheckBox>(R.id.chkEnderecos).isChecked)
+
+        val depois = Prefs.load(ctx)
+        assertFalse(depois.cardKm)
+        assertFalse(depois.cardReler)
+        assertFalse(depois.cardEnderecos)
+        assertEquals(6.5, depois.precoLitro, 0.001)
+        assertEquals(9, depois.autoIntervaloSeg)
+    }
+
+    /** R$/minuto e a linha de busca/desembarque obedecem aos próprios toggles. */
+    @Test
+    fun itensNovosDoCardObedecemOsToggles() {
+        // Card sem endereço: a linha de trajeto some em vez de aparecer vazia.
+        val semEndereco = bind(Settings(cardMinuto = true))
+        assertEquals(View.VISIBLE, semEndereco.findViewById<View>(R.id.tvMinuto).visibility)
+        assertEquals(View.GONE, semEndereco.findViewById<View>(R.id.tvEnderecos).visibility)
+        assertEquals(View.GONE, bind(Settings(cardMinuto = false)).findViewById<View>(R.id.tvMinuto).visibility)
+
+        val comTrajeto = card.copy(origem = "Rua A, 100", destino = "Av. B, 200")
+
+        val v1 = LayoutInflater.from(themed()).inflate(R.layout.overlay_panel, null)
+        PanelBinder.bind(v1, Calculator.analyze(comTrajeto, Settings()), Settings())
+        assertEquals(View.VISIBLE, v1.findViewById<View>(R.id.tvEnderecos).visibility)
         assertEquals(
-            "app fora da lista",
-            AutoScanPolicy.motivoParaNaoLer(padrao, "com.whatsapp", agora, 0L, false, false)
+            "Busca: Rua A, 100\nDesembarque: Av. B, 200",
+            v1.findViewById<TextView>(R.id.tvEnderecos).text.toString()
         )
-        assertEquals(
-            "auto-análise desligada",
-            AutoScanPolicy.motivoParaNaoLer(padrao.copy(autoScan = false), "com.ubercab.driver", agora, 0L, false, false)
+
+        val desligado = Settings(cardEnderecos = false)
+        val v2 = LayoutInflater.from(themed()).inflate(R.layout.overlay_panel, null)
+        PanelBinder.bind(v2, Calculator.analyze(comTrajeto, desligado), desligado)
+        assertEquals(View.GONE, v2.findViewById<View>(R.id.tvEnderecos).visibility)
+    }
+
+    /**
+     * A leitura automática tem que disparar sozinha, de 2 em 2 segundos, e o 99
+     * Motorista não pode ficar de fora da lista de apps de corrida: ele usa o
+     * pacote com.app99.driver, diferente do 99 passageiro (com.taxis99) — quando
+     * faltava aqui, a auto-leitura morria em silêncio e só o botão manual funcionava.
+     */
+    @Test
+    fun autoAnaliseCobre99MotoristaEDisparaDe2Em2Segundos() {
+        assertTrue(AutoScanPolicy.isRideApp("com.app99.driver"))
+        assertTrue(AutoScanPolicy.isRideApp("com.taxis99"))
+        assertTrue(AutoScanPolicy.isRideApp("com.ubercab.driver"))
+        assertFalse(AutoScanPolicy.isRideApp("com.app99x"))
+        assertFalse(AutoScanPolicy.isRideApp("com.whatsapp"))
+
+        val s = Settings(autoScan = true, autoIntervaloSeg = 2)
+        val pkg = "com.app99.driver"
+        val agora = 60_000L
+
+        // Ainda dentro do intervalo de 2 s: espera.
+        assertFalse(AutoScanPolicy.shouldScan(s, pkg, agora, agora - 1_900L, false, false))
+        // Venceu: dispara, sem nenhum outro bloqueio (é a leitura do botão manual).
+        assertTrue(AutoScanPolicy.shouldScan(s, pkg, agora, agora - 2_000L, false, false))
+        // Exceto uma pausa: o card aberto na tela (regra que o motorista pediu).
+        assertFalse(
+            AutoScanPolicy.shouldScan(s, pkg, agora, 0L, false, panelVisible = true, panelAbertoHaMs = 5_000L)
         )
-        assertEquals(
-            "card aberto na tela",
-            AutoScanPolicy.motivoParaNaoLer(padrao, "com.ubercab.driver", agora, 0L, false, true)
+        // Com o card sumido, volta a contar do zero e o próximo tique dispara.
+        assertTrue(
+            AutoScanPolicy.shouldScan(s, pkg, agora, agora - 2_000L, false, panelVisible = false)
         )
-        assertNull(AutoScanPolicy.motivoParaNaoLer(padrao, "com.ubercab.driver", agora, 0L, false, false))
     }
 }

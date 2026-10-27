@@ -11,8 +11,8 @@ android {
         applicationId = "com.radardeganhos.app"
         minSdk = 30
         targetSdk = 34
-        versionCode = 4
-        versionName = "1.3"
+        versionCode = 9
+        versionName = "1.8"
     }
 
     signingConfigs {
@@ -51,6 +51,14 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
 
+    // O lintVital do release quebra em JDK 25 (máquina toda em Java 25): ele aborta
+    // o build com a própria string de versão como erro. O lint continua disponível
+    // manualmente pelo menu do Android Studio quando quiser.
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+
     packaging {
         resources.excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1")
     }
@@ -67,6 +75,8 @@ dependencies {
     implementation("com.google.mlkit:text-recognition:16.0.0")
 
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.12.2")
+    // 4.17: ASM novo o suficiente para ler classes do JDK 25 (maior 69) — o 4.12.2
+    // quebra com "Unsupported class file major version 69" em todo teste Robolectric.
+    testImplementation("org.robolectric:robolectric:4.17")
     testImplementation("androidx.test:core:1.5.0")
 }

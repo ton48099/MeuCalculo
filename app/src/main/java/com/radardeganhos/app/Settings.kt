@@ -5,6 +5,10 @@ import android.content.SharedPreferences
 
 /**
  * Configurações do motorista. Tudo fica local (SharedPreferences), sem backup em nuvem.
+ *
+ * Regra importante: toda tela que mexe aqui precisa montar o Settings a partir de
+ * [Prefs.load] — nunca a partir de [Settings] (os padrões), senão salvar numa tela
+ * apaga o que o motorista configurou nas outras.
  */
 data class Settings(
     /** Preço do litro do combustível em R$. */
@@ -35,26 +39,46 @@ data class Settings(
     val retornoPct: Double = 0.0,
     /** Analisa sozinho quando um card aparece no Uber/99. */
     val autoScan: Boolean = true,
-    /** Libera a leitura automática também fora das apps de corrida conhecidas. */
-    val autoQualquerApp: Boolean = false,
     /** Intervalo mínimo, em segundos, entre duas leituras automáticas. */
-    val autoIntervaloSeg: Int = 6,
-    /** Quantos segundos o card flutuante fica na tela. 0 = só fecha no X. */
+    val autoIntervaloSeg: Int = 2,
+    /** Lê o card na tela externa do modo desktop (Smart Connect / DeX / espelhamento). */
+    val modoDesktop: Boolean = false,
+    /** Salva um print da tela toda vez que uma corrida é identificada (para o histórico). */
+    val printCorrida: Boolean = true,
+    /** Quantos segundos o card flutuante fica na tela. 0 = só fecha tocando nele. */
     val cardDuracaoSeg: Int = 12,
-    /** Escala do card: 0.85 pequeno, 1.0 normal, 1.15 grande, 1.3 extra. */
-    val cardEscala: Float = 1.0f,
+    /** Nível de opacidade do card (0-100). */
+    val cardOpacidade: Int = 100,
+    /** Tamanho da fonte do card: "pequena", "media" (padrão), "grande". */
+    val cardTamanhoFonte: String = "media",
+    /** Empilhar novos cards (deslize para ver). */
+    val cardEmpilhar: Boolean = false,
+    /**
+     * Posição do card flutuante na tela: "topo" (padrão), "topo-esquerda",
+     * "topo-direita" ou "centro".
+     *
+     * O topo é o padrão porque a leitura de tela começa logo abaixo do card: com ele
+     * em cima sobram a oferta do app e o resto da tela na área lida, e ficam de fora
+     * o próprio card do Radar e o topo do app (saldo, menu, notificação).
+     */
+    val cardGravity: String = "topo",
     /** Itens visíveis no card flutuante. */
     val cardVeredito: Boolean = true,
     val cardHora: Boolean = true,
     val cardKm: Boolean = true,
+    /** R$/minuto (terceira coluna, ligada pelo "Valor/Minuto"). */
+    val cardMinuto: Boolean = false,
     val cardResumo: Boolean = true,
     val cardLucro: Boolean = true,
     val cardCustos: Boolean = true,
     val cardTrajeto: Boolean = true,
-    /** Endereços de busca e desembarque no card. */
+    /** Linha "Busca: ... / Desembarque: ...". */
     val cardEnderecos: Boolean = true,
     val cardMeta: Boolean = true,
-    val cardReler: Boolean = true
+    val cardReler: Boolean = true,
+    /** Semáforo do R$/minuto (por minuto, igual à escala do R$/hora). */
+    val semaforoMinutoBom: Double = 0.75,
+    val semaforoMinutoRuim: Double = 0.58
 ) {
     /** Custo variável por km (combustível + manutenção). */
     val custoKm: Double
@@ -64,11 +88,39 @@ data class Settings(
 object Prefs {
     private const val FILE = "radar_prefs"
 
+    /** Versão do arquivo de configurações: serve para trocar padrões já gravados. */
+    private const val VERSAO = 2
+    private const val CHAVE_VERSAO = "prefsVersao"
+
+    /** Padrões antigos, só para saber se o motorista nunca mexeu no campo. */
+    private const val INTERVALO_ANTIGO = 6
+    private const val POSICAO_ANTIGA = "centro"
+
     private fun sp(c: Context): SharedPreferences =
         c.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
+    /**
+     * Traz os padrões novos (leitura de 2 em 2 s e card no topo) para quem já tem o
+     * app instalado: mudar o padrão no código não muda nada em quem já tem valor
+     * gravado. Só troca o que ainda está no valor antigo de fábrica, para não apagar
+     * uma escolha do motorista — e roda uma vez só.
+     */
+    private fun migrar(p: SharedPreferences) {
+        if (p.getInt(CHAVE_VERSAO, 1) >= VERSAO) return
+        val padrao = Settings()
+        val ed = p.edit()
+        if (p.getInt("autoIntervaloSeg", INTERVALO_ANTIGO) == INTERVALO_ANTIGO) {
+            ed.putInt("autoIntervaloSeg", padrao.autoIntervaloSeg)
+        }
+        if ((p.getString("cardGravity", POSICAO_ANTIGA) ?: POSICAO_ANTIGA) == POSICAO_ANTIGA) {
+            ed.putString("cardGravity", padrao.cardGravity)
+        }
+        ed.putInt(CHAVE_VERSAO, VERSAO).apply()
+    }
+
     fun load(c: Context): Settings {
         val p = sp(c)
+        migrar(p)
         val d = Settings()
         fun dbl(key: String, def: Double): Double =
             p.getString(key, null)?.let { NumberParse.toDouble(it) } ?: def
@@ -87,20 +139,27 @@ object Prefs {
             esperaMin = dbl("esperaMin", d.esperaMin),
             retornoPct = dbl("retornoPct", d.retornoPct),
             autoScan = p.getBoolean("autoScan", d.autoScan),
-            autoQualquerApp = p.getBoolean("autoQualquerApp", d.autoQualquerApp),
-            autoIntervaloSeg = p.getInt("autoIntervaloSeg", d.autoIntervaloSeg),
-            cardDuracaoSeg = p.getInt("cardDuracaoSeg", d.cardDuracaoSeg),
-            cardEscala = p.getFloat("cardEscala", d.cardEscala),
+            autoIntervaloSeg = p.getInt("autoIntervaloSeg", d.autoIntervaloSeg).coerceIn(2, 120),
+            modoDesktop = p.getBoolean("modoDesktop", d.modoDesktop),
+            printCorrida = p.getBoolean("printCorrida", d.printCorrida),
+            cardDuracaoSeg = p.getInt("cardDuracaoSeg", d.cardDuracaoSeg).coerceIn(0, 120),
+            cardOpacidade = p.getInt("cardOpacidade", d.cardOpacidade).coerceIn(0, 100),
+            cardTamanhoFonte = p.getString("cardTamanhoFonte", d.cardTamanhoFonte) ?: d.cardTamanhoFonte,
+            cardEmpilhar = p.getBoolean("cardEmpilhar", d.cardEmpilhar),
+            cardGravity = p.getString("cardGravity", d.cardGravity) ?: d.cardGravity,
             cardVeredito = p.getBoolean("cardVeredito", d.cardVeredito),
             cardHora = p.getBoolean("cardHora", d.cardHora),
             cardKm = p.getBoolean("cardKm", d.cardKm),
+            cardMinuto = p.getBoolean("cardMinuto", d.cardMinuto),
             cardResumo = p.getBoolean("cardResumo", d.cardResumo),
             cardLucro = p.getBoolean("cardLucro", d.cardLucro),
             cardCustos = p.getBoolean("cardCustos", d.cardCustos),
             cardTrajeto = p.getBoolean("cardTrajeto", d.cardTrajeto),
             cardEnderecos = p.getBoolean("cardEnderecos", d.cardEnderecos),
             cardMeta = p.getBoolean("cardMeta", d.cardMeta),
-            cardReler = p.getBoolean("cardReler", d.cardReler)
+            cardReler = p.getBoolean("cardReler", d.cardReler),
+            semaforoMinutoBom = dbl("semaforoMinutoBom", d.semaforoMinutoBom),
+            semaforoMinutoRuim = dbl("semaforoMinutoRuim", d.semaforoMinutoRuim)
         )
     }
 
@@ -120,13 +179,18 @@ object Prefs {
             .putString("esperaMin", s.esperaMin.toString())
             .putString("retornoPct", s.retornoPct.toString())
             .putBoolean("autoScan", s.autoScan)
-            .putBoolean("autoQualquerApp", s.autoQualquerApp)
             .putInt("autoIntervaloSeg", s.autoIntervaloSeg)
+            .putBoolean("modoDesktop", s.modoDesktop)
+            .putBoolean("printCorrida", s.printCorrida)
             .putInt("cardDuracaoSeg", s.cardDuracaoSeg)
-            .putFloat("cardEscala", s.cardEscala)
+            .putInt("cardOpacidade", s.cardOpacidade)
+            .putString("cardTamanhoFonte", s.cardTamanhoFonte)
+            .putBoolean("cardEmpilhar", s.cardEmpilhar)
+            .putString("cardGravity", s.cardGravity)
             .putBoolean("cardVeredito", s.cardVeredito)
             .putBoolean("cardHora", s.cardHora)
             .putBoolean("cardKm", s.cardKm)
+            .putBoolean("cardMinuto", s.cardMinuto)
             .putBoolean("cardResumo", s.cardResumo)
             .putBoolean("cardLucro", s.cardLucro)
             .putBoolean("cardCustos", s.cardCustos)
@@ -134,6 +198,9 @@ object Prefs {
             .putBoolean("cardEnderecos", s.cardEnderecos)
             .putBoolean("cardMeta", s.cardMeta)
             .putBoolean("cardReler", s.cardReler)
+            .putString("semaforoMinutoBom", s.semaforoMinutoBom.toString())
+            .putString("semaforoMinutoRuim", s.semaforoMinutoRuim.toString())
+            .putInt(CHAVE_VERSAO, VERSAO)
             .apply()
     }
 }

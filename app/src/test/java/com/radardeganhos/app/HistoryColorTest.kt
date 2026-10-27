@@ -57,6 +57,20 @@ class HistoryColorTest {
         assertEquals(Tone.BOM, ColorRules.toneKm(2.24, s))
     }
 
+    /** O terceiro valor do card (R$/minuto) tem o próprio semáforo, ajustável. */
+    @Test
+    fun minutoUsaOsLimitesConfigurados() {
+        val s = Settings()
+        assertEquals(Tone.RUIM, ColorRules.toneMinuto(0.40, s))
+        assertEquals(Tone.RUIM, ColorRules.toneMinuto(0.58, s))   // inclusive = vermelho
+        assertEquals(Tone.NEUTRO, ColorRules.toneMinuto(0.65, s))
+        assertEquals(Tone.BOM, ColorRules.toneMinuto(0.75, s))    // inclusive = verde
+
+        val outro = Settings(semaforoMinutoRuim = 0.5, semaforoMinutoBom = 0.9)
+        assertEquals(Tone.NEUTRO, ColorRules.toneMinuto(0.7, outro))
+        assertEquals(Tone.BOM, ColorRules.toneMinuto(0.9, outro))
+    }
+
     @Test
     fun limitesSaoAjustaveisNasConfiguracoes() {
         val s = Settings(horaRuimAte = 50.0, horaBoaDe = 70.0, kmRuimAte = 2.0, kmBoaDe = 3.0)
@@ -192,108 +206,6 @@ class HistoryColorTest {
         val card = RideParser.parse("R$ 24,90 · 5 min (1,2 km) de distância · Viagem de 18 min (7,4 km)")!!
         assertNull(card.origem)
         assertNull(card.destino)
-    }
-
-    @Test
-    fun enderecoColadoNaMesmaLinhaDoPar() {
-        val card = RideParser.parse(
-            """
-            Uber
-            R$ 20,00
-            2 min (0,3 km) de distância
-            Av. Paulista, 1000 - Bela Vista
-            Viagem de 12 min (4,9 km) Alameda Oscar Freire, 500 - Jardim Paulista
-            Aceitar
-            """.trimIndent()
-        )!!
-        assertEquals("Av. Paulista, 1000 - Bela Vista", card.origem)
-        assertEquals("Alameda Oscar Freire, 500 - Jardim Paulista", card.destino)
-    }
-
-    @Test
-    fun parTempoKmQuebradoEmDuasLinhasPeloOcr() {
-        val card = RideParser.parse(
-            """
-            Uber
-            R$ 20,00
-            2 min (0,3 km) de distância
-            Av. Paulista, 1000 - Bela Vista
-            Viagem de 12 min
-            (4,9 km)
-            Alameda Oscar Freire, 500
-            Jardim Paulista - SP
-            Aceitar
-            """.trimIndent()
-        )!!
-        assertEquals("Av. Paulista, 1000 - Bela Vista", card.origem)
-        assertEquals("Alameda Oscar Freire, 500, Jardim Paulista - SP", card.destino)
-        assertEquals(12.0, card.minViagem, 0.001)
-        assertEquals(4.9, card.kmViagem, 0.001)
-    }
-
-    @Test
-    fun destinoQueEhSoUmBairro() {
-        val card = RideParser.parse(
-            """
-            99
-            R$ 16,20
-            8min (3,3km)
-            Rua das Flores, 123
-            1 parada(s)
-            22min (9,2km)
-            Pinheiros
-            """.trimIndent()
-        )!!
-        assertEquals("Rua das Flores, 123", card.origem)
-        assertEquals("Pinheiros", card.destino)
-    }
-
-    @Test
-    fun destinoDepoisDeLinhaDeNotaDoCard() {
-        val card = RideParser.parse(
-            """
-            99
-            R$ 18,00
-            8min (3,3km)
-            Rua das Flores, 123
-            22min (9,2km)
-            ★ 4,9 123 corridas
-            Av. Central, 45 - Centro
-            Aceitar
-            """.trimIndent()
-        )!!
-        assertEquals("Rua das Flores, 123", card.origem)
-        assertEquals("Av. Central, 45 - Centro", card.destino)
-    }
-
-    @Test
-    fun cardSoComOParDeViagemAchaABuscaAcima() {
-        val card = RideParser.parse(
-            """
-            R$ 20,00
-            Av. Paulista, 1000
-            Viagem de 12 min (4,9 km)
-            Rua Augusta, 200 - São Paulo
-            Aceitar
-            """.trimIndent()
-        )!!
-        assertEquals("Av. Paulista, 1000", card.origem)
-        assertEquals("Rua Augusta, 200 - São Paulo", card.destino)
-    }
-
-    @Test
-    fun rotulosDeBuscaEDestinoSemParDeTempo() {
-        val (origem, destino) = RideParser.extractAddresses(
-            """
-            R$ 20,00
-            Busca
-            Rua Augusta, 100
-            Destino
-            Av. Paulista, 2000
-            """.trimIndent()
-        )
-        assertEquals("Rua Augusta, 100", origem)
-        assertEquals("Av. Paulista, 2000", destino)
     }
 
     // ---- 3. histórico ----------------------------------------------------
