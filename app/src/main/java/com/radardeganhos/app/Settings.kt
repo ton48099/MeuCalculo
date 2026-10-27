@@ -76,6 +76,28 @@ data class Settings(
     val cardEnderecos: Boolean = true,
     val cardMeta: Boolean = true,
     val cardReler: Boolean = true,
+    /** Mostra a contagem regressiva da recusa no card. */
+    val cardContagem: Boolean = true,
+
+    // --- Recusa automática (o X do card de ofertas) ---
+
+    /**
+     * Aperta o X sozinho quando a corrida não bate os mínimos abaixo. Vem desligado
+     * de fábrica: recusar é decisão com dinheiro envolvido, então quem liga é o dono.
+     */
+    val recusaAtiva: Boolean = false,
+    /** Modo aviso: mostra a contagem e o motivo, mas NÃO clica no X. */
+    val recusaSoAviso: Boolean = true,
+    /** Segundos entre o card aparecer e o X ser apertado (tempo para você ler). */
+    val recusaSegundos: Int = 5,
+    /** Corrida mais curta que isto (km no total) é recusada. 0 = não usa o critério. */
+    val recusaMinKm: Double = 0.0,
+    /** Corrida mais curta que isto (minutos no total) é recusada. 0 = não usa. */
+    val recusaMinMin: Double = 0.0,
+    /** R$/hora abaixo disto é recusado. 0 = não usa. */
+    val recusaMinHora: Double = 35.0,
+    /** R$/km abaixo disto é recusado. 0 = não usa. */
+    val recusaMinPorKm: Double = 1.30,
     /** Semáforo do R$/minuto (por minuto, igual à escala do R$/hora). */
     val semaforoMinutoBom: Double = 0.75,
     val semaforoMinutoRuim: Double = 0.58
@@ -118,6 +140,18 @@ object Prefs {
         ed.putInt(CHAVE_VERSAO, VERSAO).apply()
     }
 
+    /**
+     * Impressão do botão X que o próprio motorista ensinou, por pacote do app
+     * ("com.ubercab.driver", "com.app99.driver"…). O X do Uber e o da 99 ficam em
+     * lugares diferentes, então cada app tem o seu.
+     */
+    fun xAprendido(c: Context, pkg: String): XAprendido? =
+        XAprendido.decode(sp(c).getString("xBotao_$pkg", null))
+
+    fun salvarXAprendido(c: Context, pkg: String, x: XAprendido) {
+        sp(c).edit().putString("xBotao_$pkg", x.encode()).apply()
+    }
+
     fun load(c: Context): Settings {
         val p = sp(c)
         migrar(p)
@@ -158,6 +192,14 @@ object Prefs {
             cardEnderecos = p.getBoolean("cardEnderecos", d.cardEnderecos),
             cardMeta = p.getBoolean("cardMeta", d.cardMeta),
             cardReler = p.getBoolean("cardReler", d.cardReler),
+            cardContagem = p.getBoolean("cardContagem", d.cardContagem),
+            recusaAtiva = p.getBoolean("recusaAtiva", d.recusaAtiva),
+            recusaSoAviso = p.getBoolean("recusaSoAviso", d.recusaSoAviso),
+            recusaSegundos = p.getInt("recusaSegundos", d.recusaSegundos).coerceIn(1, 30),
+            recusaMinKm = dbl("recusaMinKm", d.recusaMinKm),
+            recusaMinMin = dbl("recusaMinMin", d.recusaMinMin),
+            recusaMinHora = dbl("recusaMinHora", d.recusaMinHora),
+            recusaMinPorKm = dbl("recusaMinPorKm", d.recusaMinPorKm),
             semaforoMinutoBom = dbl("semaforoMinutoBom", d.semaforoMinutoBom),
             semaforoMinutoRuim = dbl("semaforoMinutoRuim", d.semaforoMinutoRuim)
         )
@@ -198,6 +240,14 @@ object Prefs {
             .putBoolean("cardEnderecos", s.cardEnderecos)
             .putBoolean("cardMeta", s.cardMeta)
             .putBoolean("cardReler", s.cardReler)
+            .putBoolean("cardContagem", s.cardContagem)
+            .putBoolean("recusaAtiva", s.recusaAtiva)
+            .putBoolean("recusaSoAviso", s.recusaSoAviso)
+            .putInt("recusaSegundos", s.recusaSegundos)
+            .putString("recusaMinKm", s.recusaMinKm.toString())
+            .putString("recusaMinMin", s.recusaMinMin.toString())
+            .putString("recusaMinHora", s.recusaMinHora.toString())
+            .putString("recusaMinPorKm", s.recusaMinPorKm.toString())
             .putString("semaforoMinutoBom", s.semaforoMinutoBom.toString())
             .putString("semaforoMinutoRuim", s.semaforoMinutoRuim.toString())
             .putInt(CHAVE_VERSAO, VERSAO)

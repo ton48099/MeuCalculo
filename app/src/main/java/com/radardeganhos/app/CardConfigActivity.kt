@@ -54,6 +54,16 @@ class CardConfigActivity : AppCompatActivity() {
     private lateinit var chkTrajeto: CheckBox
     private lateinit var chkReler: CheckBox
 
+    // Recusa automática (o X)
+    private lateinit var chkRecusa: CheckBox
+    private lateinit var chkRecusaAviso: CheckBox
+    private lateinit var chkCardContagem: CheckBox
+    private lateinit var etRecusaSegundos: EditText
+    private lateinit var etRecusaMinKm: EditText
+    private lateinit var etRecusaMinMin: EditText
+    private lateinit var etRecusaMinHora: EditText
+    private lateinit var etRecusaMinPorKm: EditText
+
     // Semáforos KM
     private lateinit var btnKmBomMenos: ImageButton
     private lateinit var txtKmBom: TextView
@@ -115,6 +125,14 @@ class CardConfigActivity : AppCompatActivity() {
         chkMeta = findViewById(R.id.chkMeta)
         chkTrajeto = findViewById(R.id.chkTrajeto)
         chkReler = findViewById(R.id.chkReler)
+        chkRecusa = findViewById(R.id.chkRecusa)
+        chkRecusaAviso = findViewById(R.id.chkRecusaAviso)
+        chkCardContagem = findViewById(R.id.chkCardContagem)
+        etRecusaSegundos = findViewById(R.id.etRecusaSegundos)
+        etRecusaMinKm = findViewById(R.id.etRecusaMinKm)
+        etRecusaMinMin = findViewById(R.id.etRecusaMinMin)
+        etRecusaMinHora = findViewById(R.id.etRecusaMinHora)
+        etRecusaMinPorKm = findViewById(R.id.etRecusaMinPorKm)
 
         btnKmBomMenos = findViewById(R.id.btnKmBomMenos)
         txtKmBom = findViewById(R.id.txtKmBom)
@@ -154,24 +172,26 @@ class CardConfigActivity : AppCompatActivity() {
         listOf(chkAutoScan, chkModoDesktop, chkPrintCorrida).forEach { chk ->
             chk.setOnCheckedChangeListener { _, _ -> salvar() }
         }
-        // O intervalo salva ENQUANTO o motorista digita. Antes ele só era gravado ao
-        // sair do campo: escrever "2" e fechar o teclado podia não gravar nada, e a
-        // tela voltava mostrando 6 — era o "não consigo mudar o valor".
-        etAutoIntervalo.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                if (carregando) return
-                val valor = NumberParse.toDouble(s?.toString())?.toInt() ?: return
-                // Número ainda incompleto ("1" de "12") não vale: só a faixa aceita.
-                if (valor in 2..120) salvar()
-            }
-        })
+        // Os campos de número salvam ENQUANTO o motorista digita. Antes o intervalo só
+        // era gravado ao sair do campo: escrever "2" e fechar o teclado podia não
+        // gravar nada, e a tela voltava mostrando 6 — era o "não consigo mudar o valor".
+        listOf(
+            etAutoIntervalo, etRecusaSegundos, etRecusaMinKm, etRecusaMinMin,
+            etRecusaMinHora, etRecusaMinPorKm
+        ).forEach { salvarAoDigitar(it) }
+
+        // Ao sair do campo, a tela passa a mostrar o que ficou gravado de verdade
+        // (digitou 1 no intervalo, que é menor que o mínimo → aparece 2).
         etAutoIntervalo.setOnFocusChangeListener { _, temFoco ->
             if (!temFoco) {
                 salvar()
-                // Mostra o que ficou gravado de verdade (digitou 1 → vira 2).
                 etAutoIntervalo.setText(Prefs.load(this).autoIntervaloSeg.toString())
+            }
+        }
+        etRecusaSegundos.setOnFocusChangeListener { _, temFoco ->
+            if (!temFoco) {
+                salvar()
+                etRecusaSegundos.setText(Prefs.load(this).recusaSegundos.toString())
             }
         }
 
@@ -214,7 +234,8 @@ class CardConfigActivity : AppCompatActivity() {
         // Tudo o que é item do card salva e já aparece aplicado.
         listOf(
             chkEmpilhar, chkValorKm, chkValorHora, chkValorMinuto, chkValoresTotais,
-            chkVeredito, chkEnderecos, chkCustoTotal, chkLucro, chkMeta, chkTrajeto, chkReler
+            chkVeredito, chkEnderecos, chkCustoTotal, chkLucro, chkMeta, chkTrajeto, chkReler,
+            chkRecusa, chkRecusaAviso, chkCardContagem
         ).forEach { chk -> chk.setOnCheckedChangeListener { _, _ -> salvar() } }
 
         findViewById<TextView>(R.id.btnSalvar).setOnClickListener {
@@ -260,6 +281,24 @@ class CardConfigActivity : AppCompatActivity() {
             ?: "serviço não conectado — ative em Ajustes › Acessibilidade"
         tvDiag.text = "Última leitura: ${AutoDiag.resumo(this)}\n\nAgora: $agora"
     }
+
+    /** Salva a cada tecla digitada num campo de número (o valor é lido no [readForm]). */
+    private fun salvarAoDigitar(campo: EditText) {
+        campo.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                if (carregando) return
+                if (s.isNullOrBlank()) return
+                if (NumberParse.toDouble(s.toString()) == null) return
+                salvar()
+            }
+        })
+    }
+
+    /** Campo de número da tela; vazio vale 0 (nos mínimos, 0 desliga o critério). */
+    private fun numeroOuZero(txt: EditText): Double =
+        (NumberParse.toDouble(txt.text?.toString()) ?: 0.0).coerceAtLeast(0.0)
 
     /** Salva tudo (preservando as outras seções) e aplica no card que está na tela. */
     private fun salvar() {
@@ -329,6 +368,15 @@ class CardConfigActivity : AppCompatActivity() {
         chkModoDesktop.isChecked = s.modoDesktop
         chkPrintCorrida.isChecked = s.printCorrida
 
+        chkRecusa.isChecked = s.recusaAtiva
+        chkRecusaAviso.isChecked = s.recusaSoAviso
+        chkCardContagem.isChecked = s.cardContagem
+        etRecusaSegundos.setText(s.recusaSegundos.toString())
+        etRecusaMinKm.setText(formatarNumero(s.recusaMinKm))
+        etRecusaMinMin.setText(formatarNumero(s.recusaMinMin))
+        etRecusaMinHora.setText(formatarNumero(s.recusaMinHora))
+        etRecusaMinPorKm.setText(formatarNumero(s.recusaMinPorKm))
+
         chkEmpilhar.isChecked = s.cardEmpilhar
         chkValorKm.isChecked = s.cardKm
         chkValorHora.isChecked = s.cardHora
@@ -391,6 +439,15 @@ class CardConfigActivity : AppCompatActivity() {
         cardMeta = chkMeta.isChecked,
         cardTrajeto = chkTrajeto.isChecked,
         cardReler = chkReler.isChecked,
+        cardContagem = chkCardContagem.isChecked,
+        recusaAtiva = chkRecusa.isChecked,
+        recusaSoAviso = chkRecusaAviso.isChecked,
+        recusaSegundos = (NumberParse.toDouble(etRecusaSegundos.text?.toString())?.toInt()
+            ?: base.recusaSegundos).coerceIn(1, 30),
+        recusaMinKm = numeroOuZero(etRecusaMinKm),
+        recusaMinMin = numeroOuZero(etRecusaMinMin),
+        recusaMinHora = numeroOuZero(etRecusaMinHora),
+        recusaMinPorKm = numeroOuZero(etRecusaMinPorKm),
         kmBoaDe = num(txtKmBom, Settings().kmBoaDe),
         kmRuimAte = num(txtKmRuim, Settings().kmRuimAte),
         horaBoaDe = num(txtHoraBom, Settings().horaBoaDe),

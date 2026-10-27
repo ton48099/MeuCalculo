@@ -6,7 +6,7 @@ App Android que lê o card de corrida do **Uber** e da **99** em qualquer tela (
 
 ```
 pacote: com.radardeganhos.app
-versão: 1.8 (versionCode 9)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
+versão: 1.9 (versionCode 10)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
 ```
 
 O APK sai do próprio Android Studio (aba **Build › Build App Bundle(s) / APK(s) › Build APK(s)**)
@@ -29,7 +29,7 @@ O app tem menu inferior com **Início** e **Histórico**; na Início:
 |---|---|
 | botão grande no topo | **ATIVAR / DESLIGAR** a leitura (ligação imediata) |
 | **1 · CUSTOS** | preço do litro, consumo, manutenção, comissão, aluguel, espera, retorno e metas |
-| **2 · CARD E CORES** | **leitura automática** (liga/desliga, intervalo, modo desktop, print e diagnóstico), duração na tela, **posição**, opacidade, tamanho da fonte, empilhar, itens visíveis e limites do semáforo |
+| **2 · CARD E CORES** | **leitura automática** (liga/desliga, intervalo, modo desktop, print e diagnóstico), duração na tela, **posição**, opacidade, tamanho da fonte, empilhar, itens visíveis, limites do semáforo e **recusar sozinho (o X)** |
 | **STATUS** | se o serviço está ativo |
 
 ## Como usar
@@ -119,6 +119,48 @@ o corte acompanha o card se você arrastá-lo para outro lugar.
 Se o card ocupar quase toda a tela (fonte grande com todos os itens), não sobra área útil: nesse caso a leitura
 volta a ser a tela inteira em vez de ler uma faixa de 20 px.
 
+## Recusar sozinho (o X)
+
+Quando a corrida não bate os mínimos configurados, o app **aperta o X do card** por você — no celular e na
+2ª tela (modo desktop). Vem **desligado de fábrica** e, quando ligado, começa em **“só avisar”**: mostra a
+contagem e o motivo, sem clicar. Recusar é decisão com dinheiro envolvido, então quem libera o clique é você.
+
+Como funciona:
+
+1. a oferta é lida e calculada normalmente; se estiver dentro dos mínimos, nada acontece;
+2. se estiver fora, o card mostra a **contagem regressiva** (padrão **5 s**, de 1 a 30 — tempo de ler e conferir;
+   tocar no card cancela);
+3. ao zerar, o app procura o X daquele app, **confere se a oferta ainda está na tela** (se você aceitou nesse
+   meio-tempo, nada é clicado) e clica;
+4. a mesma oferta nunca é recusada duas vezes (2 minutos de memória, por segurança).
+
+Mínimos configuráveis — abaixo de qualquer um deles, recusa (0 desliga o critério):
+
+| Critério | Padrão |
+|---|---|
+| km no total (pick-up + viagem) | desligado |
+| minutos no total | desligado |
+| R$ por hora (bruto) | 35,00 |
+| R$ por km (bruto) | 1,30 |
+
+Os dois últimos são os mesmos valores do semáforo vermelho, então “recusar o que está vermelho” é o
+comportamento de fábrica. Os valores usados são os **brutos** do card, os mesmos que pintam as cores.
+
+**Onde fica o X.** O X do Uber não está no mesmo lugar do X da 99, e cada app desenha o botão do seu jeito.
+O app procura em três degraus: (1) o X que **você ensinou** — quando você recusa uma oferta à mão com o card
+na tela, o app guarda a impressão daquele botão por app; (2) descrição/id que dizem “fechar”, “recusar”,
+“decline”, “close”; (3) geometria (botão pequeno colado na borda de cima). Sem botão encontrado, **nada é
+clicado** e o diagnóstico diz o motivo.
+
+Por isso o primeiro teste é assim: ligue **Recusar sozinho**, deixe **Só avisar** ligado, veja o diagnóstico
+(“achei o X …”, “oferta conferida na tela”). Se o app não achar, recuse uma oferta à mão com o card na tela
+que ele aprende — o diagnóstico confirma o aprendizado. Depois desligue o “só avisar” para valer.
+
+> Recusar automaticamente é automatizar um toque dentro do app do Uber/99. Vai contra os termos de uso
+desses apps e o risco (conta bloqueada, oferta recusada por engano) é seu. O app foi feito para ser
+conservador: mínimo igual a 0 nunca recusa, leitura incompleta nunca recusa e a contagem sempre aparece
+antes do clique.
+
 ## Histórico de corridas
 
 Cada card analisado (botão flutuante ou auto-análise) entra no **Histórico**.
@@ -169,7 +211,7 @@ Requisitos: JDK 17, Android SDK 34 (o wrapper usa Gradle 9.6).
 
 ```bash
 ./gradlew :app:assembleRelease      # gera app/build/outputs/apk/release/app-release.apk
-./gradlew :app:testDebugUnitTest    # 73 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas
+./gradlew :app:testDebugUnitTest    # 95 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, recusa automática (critérios, escolha do X, contagem)
 ```
 
 Se o Android Studio estiver instalado, o JDK dele serve (`C:\Program Files\Android\Android Studio\jbr`);

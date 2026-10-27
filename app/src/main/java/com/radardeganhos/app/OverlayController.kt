@@ -206,6 +206,23 @@ class OverlayController(
     fun hidePanel() = fecharCards(notificar = true)
 
     /**
+     * Escreve (ou apaga, com null) a linha da contagem regressiva da recusa no card
+     * que está na tela. Chamado a cada segundo pelo serviço enquanto a recusa está
+     * agendada; tocar no card cancela e fecha, o que já derruba a contagem.
+     */
+    fun atualizarContagem(msg: String?) {
+        cards.forEach { card ->
+            val tv = card.view.findViewById<android.widget.TextView>(R.id.tvContagem) ?: return@forEach
+            if (msg.isNullOrBlank()) {
+                tv.visibility = View.GONE
+            } else {
+                tv.text = msg
+                tv.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    /**
      * Aplica na hora as configurações no card que está na tela. Para tamanho da fonte,
      * posição e opacidade o card é redesenhado com a última leitura — era o que faltava
      * para a configuração valer na prática sem precisar ler de novo.

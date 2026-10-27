@@ -1211,6 +1211,197 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Recusar sozinho: apertar o X quando a corrida não bate o padrão -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="1dp"
+                app:strokeColor="@color/stroke"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Recusar sozinho (o X)"
+                        android:textColor="@color/orange"
+                        android:textSize="20sp"
+                        android:textStyle="bold" />
+
+                    <CheckBox
+                        android:id="@+id/chkRecusa"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:buttonTint="@color/orange"
+                        android:text="Apertar o X quando a corrida não bater os mínimos abaixo"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+
+                    <CheckBox
+                        android:id="@+id/chkRecusaAviso"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:buttonTint="@color/orange"
+                        android:text="Só avisar: mostra a contagem e o motivo, sem clicar no X"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+
+                    <CheckBox
+                        android:id="@+id/chkCardContagem"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:buttonTint="@color/orange"
+                        android:text="Mostrar a contagem regressiva no card"
+                        android:textColor="@color/text"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Segundos antes de recusar (de 1 a 30; dá tempo de você olhar o card)"
+                        android:textColor="@color/textDim"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/etRecusaSegundos"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/bg_field"
+                        android:hint="5"
+                        android:inputType="number"
+                        android:maxLength="2"
+                        android:padding="12dp"
+                        android:textColor="@color/text"
+                        android:textColorHint="@color/textDim"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="Mínimos para ACEITAR a corrida (abaixo disso, recusa; 0 desliga o critério)"
+                        android:textColor="@color/textDim"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Km no total (pick-up + viagem)"
+                        android:textColor="@color/textDim"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/etRecusaMinKm"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_field"
+                        android:hint="0"
+                        android:inputType="numberDecimal"
+                        android:maxLength="6"
+                        android:padding="12dp"
+                        android:textColor="@color/text"
+                        android:textColorHint="@color/textDim"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Minutos no total"
+                        android:textColor="@color/textDim"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/etRecusaMinMin"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_field"
+                        android:hint="0"
+                        android:inputType="numberDecimal"
+                        android:maxLength="6"
+                        android:padding="12dp"
+                        android:textColor="@color/text"
+                        android:textColorHint="@color/textDim"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="R$ por hora"
+                        android:textColor="@color/textDim"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/etRecusaMinHora"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_field"
+                        android:hint="35"
+                        android:inputType="numberDecimal"
+                        android:maxLength="7"
+                        android:padding="12dp"
+                        android:textColor="@color/text"
+                        android:textColorHint="@color/textDim"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="R$ por km"
+                        android:textColor="@color/textDim"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/etRecusaMinPorKm"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_field"
+                        android:hint="1,30"
+                        android:inputType="numberDecimal"
+                        android:maxLength="6"
+                        android:padding="12dp"
+                        android:textColor="@color/text"
+                        android:textColorHint="@color/textDim"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="O X fica em lugar diferente no Uber e na 99. Se a recusa não achar o botão, recuse uma oferta à mão uma vez com o card na tela: o app aprende onde é o X daquela app e o diagnóstico mostra o que aprendeu."
+                        android:textColor="@color/textDim"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Recusar é decisão sua: por isso vem desligado, e ligado começa no modo aviso. Vale para o celular e para a 2ª tela (modo desktop)."
+                        android:textColor="@color/textDim"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

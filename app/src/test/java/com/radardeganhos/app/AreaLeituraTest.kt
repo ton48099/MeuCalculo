@@ -149,15 +149,16 @@ class AreaLeituraTest {
     }
 
     @Test
-    fun intervaloForaDaFaixaNaoTrocaOValorBom() {
+    fun intervaloAbaixoDoMinimoViraOMinimo() {
         val ctx: Context = ApplicationProvider.getApplicationContext()
         val activity = Robolectric.buildActivity(CardConfigActivity::class.java).setup().get()
         val campo = activity.findViewById<EditText>(R.id.etAutoIntervalo)
 
         campo.setText("4")
         assertEquals(4, Prefs.load(ctx).autoIntervaloSeg)
-        // "1" está fora da faixa (mínimo 2): continua valendo o último valor bom.
+        // "1" está abaixo da faixa (mínimo 2): o que fica gravado é o mínimo, e é o
+        // valor que a tela passa a mostrar quando o campo perde o foco.
         campo.setText("1")
-        assertEquals(4, Prefs.load(ctx).autoIntervaloSeg)
+        assertEquals(2, Prefs.load(ctx).autoIntervaloSeg)
     }
 }

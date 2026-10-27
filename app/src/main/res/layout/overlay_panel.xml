@@ -43,6 +43,27 @@
             android:textSize="11sp" />
     </LinearLayout>
 
+    <!--
+        Contagem regressiva da recusa automática. Fica escondida por padrão: quem
+        mostra é o serviço, quando a corrida bate os critérios de recusa.
+    -->
+    <TextView
+        android:id="@+id/tvContagem"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="9dp"
+        android:background="@drawable/bg_recusa"
+        android:gravity="center"
+        android:paddingStart="8dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="6dp"
+        android:text=""
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
     <!-- R$/hora e R$/km DESTA corrida -->
     <LinearLayout
         android:id="@+id/rowMetricas"
