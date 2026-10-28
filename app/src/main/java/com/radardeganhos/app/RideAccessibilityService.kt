@@ -260,26 +260,15 @@ class RideAccessibilityService : AccessibilityService() {
     /**
      * Escolhe de onde ler: o app de corrida da tela externa (modo desktop) tem
      * prioridade; senão, a tela principal. Devolve null quando não há nada a ler.
+     *
+     * A tela externa só entra quando existe um app de corrida ABERTO nela. Antes eu
+     * caía para "qualquer tela extra conectada", e com o modo desktop ligado a leitura
+     * do celular morria (o celular nunca era escolhido).
      */
     private fun resolverAlvo(s: Settings): Pair<String?, Int>? {
         if (s.modoDesktop) {
             val externa = corridaNaTelaExterna(s)
-            val ativo = pacoteAtivo()
-            // App de corrida em primeiro plano no celular: lê o celular, mesmo com o
-            // modo desktop ligado (o motorista pode estar usando o aparelho na mão).
-            if (externa == null && ativo != null && AutoScanPolicy.isRideApp(ativo)) {
-                return ativo to MultiTela.TELA_PRINCIPAL
-            }
-            // A tela do botão R$ é a mais confiável: foi ali que a janela do Radar foi
-            // aceita. Sem isso, depender só da varredura de janelas fazia a leitura
-            // automática cair no celular (e o botão piscava na tela principal).
-            val display = externa?.second ?: overlayExterno?.tela ?: displayExternoDisponivel()
-            if (display != null) {
-                val pkg = externa?.first
-                    ?: lastPackage?.takeIf { AutoScanPolicy.isRideApp(it) }
-                    ?: ativo?.takeIf { AutoScanPolicy.isRideApp(it) }
-                return pkg to display
-            }
+            if (externa != null) return externa
         }
         return (pacoteAtivo() ?: lastPackage)?.let { it to MultiTela.TELA_PRINCIPAL }
     }
@@ -1003,19 +992,18 @@ class RideAccessibilityService : AccessibilityService() {
         val metricas = metricasDaTela(displayId) ?: return emptyList()
         // Janela que sobrar menor que isso não vale um OCR próprio.
         val alturaMinima = metricas.heightPixels / 20
-        val larguraMinima = metricas.widthPixels * 0.3f
 
-        // Uma janela por app. O pacote vem nulo quando o sistema não deixa ler a raiz
-        // daquele app (comum nas janelas do Smart Connect): a janela ainda serve para
-        // recortar, mas o card sai sem app identificado em vez de herdar o pacote errado.
-        val vistas = LinkedHashMap<String, Pair<String?, android.graphics.Rect>>()
+        // Uma janela por app de corrida conhecido. Janela sem pacote fica de fora: no
+        // Smart Connect ela é a moldura do sistema, e recortá-la gerava um "card" de
+        // mentira na metade da tela em que não havia oferta (bug da 1.11).
+        val vistas = LinkedHashMap<String, Pair<String, android.graphics.Rect>>()
         for (janela in janelas) {
             val pkg = try {
                 janela.root?.packageName?.toString()
             } catch (t: Throwable) {
                 null
-            }
-            if (pkg != null && !AutoScanPolicy.isRideApp(pkg)) continue
+            } ?: continue
+            if (!AutoScanPolicy.isRideApp(pkg)) continue
             val retangulo = android.graphics.Rect()
             try {
                 janela.getBoundsInScreen(retangulo)
@@ -1023,19 +1011,30 @@ class RideAccessibilityService : AccessibilityService() {
                 continue
             }
             if (retangulo.isEmpty) continue
-            if (pkg == null) {
-                // Sem pacote só entra janela de app de verdade, e grande: assim um
-                // aviso ou um PiP não viram um recorte (e um card) de mentira.
-                if (janela.type != AccessibilityWindowInfo.TYPE_APPLICATION) continue
-                val grande = retangulo.width() >= larguraMinima || retangulo.height() >= metricas.heightPixels * 0.3
-                if (!grande) continue
-            }
             if (limiteNaTela > 0) retangulo.top = maxOf(retangulo.top, limiteNaTela)
             if (retangulo.height() < alturaMinima) continue
-            val chave = pkg ?: "janela:${retangulo.left},${retangulo.top},${retangulo.right}"
-            vistas.putIfAbsent(chave, pkg to retangulo)
+            vistas.putIfAbsent(pkg, pkg to retangulo)
         }
-        if (vistas.size < 2) return emptyList()
+        if (vistas.isEmpty()) return emptyList()
+
+        // Um app só também é recortado: assim o OCR não enxerga a outra metade da tela,
+        // onde o outro app mostra o saldo do dia (que virava valor da corrida).
+        if (vistas.size == 1) {
+            val (pkg, janela) = vistas.values.first()
+            val unico = Recortes.paraCaptura(
+                janela = janela,
+                larguraCaptura = captura.width,
+                alturaCaptura = captura.height,
+                larguraTela = metricas.widthPixels,
+                alturaTela = metricas.heightPixels
+            ) ?: return emptyList()
+            val corte = try {
+                Bitmap.createBitmap(captura, unico.left, unico.top, unico.width(), unico.height())
+            } catch (t: Throwable) {
+                return emptyList()
+            }
+            return listOf(ParLeitura(corte, pkg))
+        }
 
         val ordenados = vistas.entries.toList()
         val retangulos = Recortes.dividir(
