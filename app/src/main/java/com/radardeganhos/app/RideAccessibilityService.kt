@@ -1173,6 +1173,12 @@ class RideAccessibilityService : AccessibilityService() {
                             }
                             if (nome != null) {
                                 RideHistory.attachPrint(this@RideAccessibilityService, nome)
+                                withContext(Dispatchers.IO) {
+                                    val log = runCatching { AutoDiag.montarLog(this@RideAccessibilityService) }.getOrNull()
+                                    if (!log.isNullOrBlank()) {
+                                        Prints.salvarLog(this@RideAccessibilityService, nome, log)
+                                    }
+                                }
                             }
                         }
                     }

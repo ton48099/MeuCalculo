@@ -185,6 +185,29 @@ object Prints {
         null
     }
 
+    /** Salva o log do OCR ao lado da print, com o mesmo nome base. */
+    fun salvarLog(c: Context, nomePrint: String, log: String): String? = try {
+        if (nomePrint.isBlank() || log.isBlank()) return null
+        dir(c).mkdirs()
+        val base = nomePrint.removeSuffix(".jpg")
+        val nomeLog = "$base.log.txt"
+        File(dir(c), nomeLog).writeText(log)
+        nomeLog
+    } catch (t: Throwable) {
+        null
+    }
+
+    /** Carrega o log do OCR salvo junto com a print. */
+    fun carregarLog(c: Context, nomePrint: String): String? = try {
+        if (nomePrint.isBlank()) return null
+        val base = nomePrint.removeSuffix(".jpg")
+        val arquivo = File(dir(c), "$base.log.txt")
+        if (!arquivo.exists()) return null
+        arquivo.readText()
+    } catch (t: Throwable) {
+        null
+    }
+
     /** Imagem decodificada para exibir na tela do histórico (reduzida, se preciso). */
     fun carregar(c: Context, nome: String, larguraMax: Int = 1080): Bitmap? {
         val arquivo = File(dir(c), nome)

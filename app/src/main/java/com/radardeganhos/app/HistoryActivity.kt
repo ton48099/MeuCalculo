@@ -1,6 +1,9 @@
 package com.radardeganhos.app
 
 import android.annotation.SuppressLint
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -9,6 +12,7 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
@@ -121,6 +125,27 @@ class HistoryActivity : AppCompatActivity() {
         } else {
             img.setImageDrawable(null)
             img.visibility = View.GONE
+        }
+
+        // Log do OCR salvo junto com a print (pra enviar os dois juntos)
+        val log = r.print?.let { Prints.carregarLog(this, it) }
+        if (!log.isNullOrBlank()) {
+            val btnLog = MaterialButton(this)
+            btnLog.text = "Copiar log do OCR"
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            lp.setMargins(0, 16, 0, 0)
+            btnLog.layoutParams = lp
+            btnLog.setOnClickListener {
+                val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                cm.setPrimaryClip(ClipData.newPlainText("radar_log", log))
+                Toast.makeText(this, "Log copiado", Toast.LENGTH_SHORT).show()
+            }
+            if (item is LinearLayout) {
+                item.addView(btnLog)
+            }
         }
     }
 
