@@ -5,6 +5,8 @@ package com.radardeganhos.app
  */
 data class RideCard(
     val app: String?,
+    /** Categoria lida no badge do card: "UberX", "Confort", "99Pop", "Negocia"… */
+    val categoria: String? = null,
     /** Valor bruto oferecido pelo app. */
     val valor: Double,
     val kmDeslocamento: Double,
@@ -41,12 +43,16 @@ object RideParser {
     private val moneyRegex = Regex(MONEY)
     private val taxaRegex = Regex("""taxa\s+de\s+deslocamento[^0-9]{0,16}(?:r\$|rs\.?)\s*(\d+(?:[.,]\d{1,2})?)""")
 
-    private val pairHM = Regex("""(\d+)\s*h\s*(?:e\s*)?(\d{1,2})\s*min\s*[\(\[]?\s*(\d+(?:[.,]\d+)?)\s*km""")
+    // Entre o tempo e o km o card da 99 põe um ponto ("5min • 2,3km"): sem aceitar
+    // o separador o par não casava e a conta saía com o km de um lado e o tempo do outro.
+    private val sepPar = """[•·:\-–—]?\s*"""
+
+    private val pairHM = Regex("""(\d+)\s*h\s*(?:e\s*)?(\d{1,2})\s*min\.?\s*$sepPar[\(\[]?\s*(\d+(?:[.,]\d+)?)\s*km""")
     private val pairH = Regex("""(\d+)\s*h\s*[\(\[]?\s*(\d+(?:[.,]\d+)?)\s*km""")
 
     /** "1h19 (71,7 km)": o app escreve "min", mas o OCR pode comer a palavra. */
     private val pairHMinSemMin = Regex("""(\d+)\s*h\s*(\d{1,2})\s*[\(\[]?\s*(\d+(?:[.,]\d+)?)\s*km""")
-    private val pairMin = Regex("""(\d+)\s*min\s*\(?\s*(\d+(?:[.,]\d+)?)\s*km""")
+    private val pairMin = Regex("""(\d+)\s*min\.?\s*$sepPar\(?(\d+(?:[.,]\d+)?)\s*km""")
     private val pairMinMeters = Regex("""(\d+)\s*min\s*\(?\s*(\d{2,5})\s*m\b""")
     private val pairKmMin = Regex("""(\d+(?:[.,]\d+)?)\s*km[^0-9]{0,12}?(\d+)\s*min""")
 
@@ -72,7 +78,7 @@ object RideParser {
     private val normQuebra = Regex("""[ \t]*\n[ \t]*""")
     private val normEspacos = Regex("""\s+""")
     private val noventaENove = Regex("""\b99\b""")
-    private val simbolosPar = Regex("""[()\[\]·|]""")
+    private val simbolosPar = Regex("""[()\[\]·•|]""")
 
     /**
      * O OCR às vezes separa os dígitos de um número: "1 9 min" em vez de "19 min",
@@ -138,10 +144,55 @@ object RideParser {
             t.contains("uberx") || t.contains("uber black") || t.contains("uber comfort") -> "Uber"
             t.contains("uber") -> "Uber"
             t.contains("99app") || t.contains("99 motorista") || t.contains("99motorista") ||
-                t.contains("99 driver") || noventaENove.containsMatchIn(t) -> "99"
+                t.contains("99 driver") ||
+                // "99Pop"/"99Negocia" colados: \b99\b não casa porque número e letra
+                // são a mesma palavra — o card saía como "app não identificado".
+                t.contains("99pop") || t.contains("99negocia") ||
+                noventaENove.containsMatchIn(t) -> "99"
             else -> null
         }
     }
+
+    /**
+     * Categoria da corrida, lida no badge do próprio card: UberX, Confort, Black,
+     * Flash, 99Pop, 99Negocia…
+     *
+     * É informativa — entra no cabeçalho do card do Radar, ao lado do nome do app,
+     * para o motorista reconhecer a oferta de relance quando os dois apps tocam ao
+     * mesmo tempo. O vocabulário é pequeno e fechado de propósito (palavra de
+     * endereço não pode virar categoria) e, quando o app é conhecido, só o
+     * vocabulário dele é olhado: um "Pop" no endereço de corrida do Uber não vira
+     * 99Pop. A ordem das listas é a prioridade — o termo mais específico primeiro.
+     */
+    fun detectCategoria(text: String, app: String?): String? {
+        val t = text.lowercase()
+        if (app != "99") categoriasUber.forEach { (re, nome) ->
+            if (re.containsMatchIn(t)) return nome
+        }
+        if (app != "Uber") categorias99.forEach { (re, nome) ->
+            if (re.containsMatchIn(t)) return nome
+        }
+        return null
+    }
+
+    private val categoriasUber = listOf(
+        Regex("""\buber\s*x\b""") to "UberX",
+        Regex("""\bconfort\b|\bcomfort\b""") to "Confort",
+        Regex("""\buber\s*black\b""") to "Black",
+        Regex("""\buber\s*moto\b|\buber\s*moto""") to "Moto",
+        Regex("""\bflash\b""") to "Flash",
+        Regex("""\bxl\b""") to "XL"
+    )
+
+    private val categorias99 = listOf(
+        Regex("""99\s*negocia|\bnegocia""") to "Negocia",
+        Regex("""99\s*pop|\bpop\b""") to "99Pop",
+        Regex("""99\s*confort|\bconfort\b|\bcomfort\b""") to "Confort",
+        Regex("""99\s*compartilha|\bcompartilha""") to "Compartilha",
+        Regex("""99\s*el[ée]tric""") to "Elétrico",
+        Regex("""99\s*moto""") to "Moto",
+        Regex("""\bt[áa]xi\b""") to "Táxi"
+    )
 
     /**
      * Tenta ler um card a partir de um texto (OCR ou digitado).
@@ -266,8 +317,10 @@ object RideParser {
             .toList()
         val valor = valores.firstOrNull() ?: return null
 
+        val app = detectApp(raw, packageHint)
         val card = RideCard(
-            app = detectApp(raw, packageHint),
+            app = app,
+            categoria = detectCategoria(norm, app),
             valor = valor,
             kmDeslocamento = kmDes,
             minDeslocamento = minDes,

@@ -39,6 +39,10 @@ object PanelBinder {
         // quando o Uber e a 99 tocam uma oferta cada um, ao mesmo tempo.
         v.findViewById<TextView>(R.id.tvApp).text = buildString {
             append(a.card.app ?: "app não identificado")
+            // A categoria vem do badge do card ("UberX", "Confort", "99Pop",
+            // "Negocia"): é o que o motorista quer saber de relance quando Uber e 99
+            // tocam oferta ao mesmo tempo.
+            a.card.categoria?.let { append(" · "); append(it) }
             append(" · nota ")
             append(Math.round(a.score))
             append("%")

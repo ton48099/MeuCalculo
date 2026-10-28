@@ -389,4 +389,149 @@ class RideParserTest {
         assertEquals(79.0, c.minViagem, 0.01)
         assertEquals(71.7, c.kmViagem, 0.01)
     }
+
+    // ---- categorias (UberX/Confort · 99Pop/99Negocia) e capturas de 29/10 --
+
+    /**
+     * Card do Uber (foto nova): badge "UberX", linha "2 paradas" e trecho escrito
+     * por extenso — "58 minutos (28.1 km)". A conta tem de fechar com o "Est. de
+     * R${'$'}1,25/km" que o próprio card mostra.
+     */
+    @Test
+    fun leCategoriaEBa58MinutosNoCardDoUber() {
+        val c = RideParser.parse(
+            """
+            UberX
+            R${'$'} 37,03
+            Est. de R${'$'}1,25/km
+            4,88 (1039)
+            4 min (1.6 km)
+            Av. João Corrêa, Bairro Centro, São Leopoldo
+            2 paradas
+            58 minutos (28.1 km)
+            R. Prof. Stumpf, 183, Vicentina, São Leopoldo
+            Viagem longa (mais de 30 min)
+            Tenho interesse
+            """.trimIndent(),
+            "com.ubercab.driver"
+        )!!
+        assertEquals("Uber", c.app)
+        assertEquals("UberX", c.categoria)
+        assertEquals(37.03, c.valor, 0.001)
+        assertEquals(1.6, c.kmDeslocamento, 0.001)
+        assertEquals(4.0, c.minDeslocamento, 0.001)
+        assertEquals(28.1, c.kmViagem, 0.001)
+        assertEquals(58.0, c.minViagem, 0.001)
+        assertEquals(1.25, c.valor / c.kmTotal, 0.01)
+    }
+
+    /**
+     * Card da 99 Negocia (foto nova): o tempo e a distância vêm separados por um
+     * ponto — "5min • 2,3km" e "235min • 283,5km". Sem aceitar o ponto, o par não
+     * casava e o km do cabeçalho ("283,5 km") acabava virando o deslocamento.
+     */
+    @Test
+    fun leCardDa99NegociaComPontoEntreTempoEKm() {
+        val c = RideParser.parse(
+            """
+            5,00 ★ • 37 corridas • 99Negocia
+            Perfil Premium
+            R${'$'} 1.032,48
+            Longa
+            283,5 km
+            5min • 2,3km
+            Residencial Vivendas do Lago, Estr. do Ipatinga, 401 - Sorocaba - SP
+            235min • 283,5km
+            Terminal Rodoviário de Caraguatatuba, Avenida Brasília, 50 - Caraguatatuba - SP
+            Aceitar por 1.032,48
+            """.trimIndent(),
+            "com.taxis99"
+        )!!
+        assertEquals("99", c.app)
+        assertEquals("Negocia", c.categoria)
+        assertEquals(1032.48, c.valor, 0.001)
+        assertEquals(2.3, c.kmDeslocamento, 0.001)
+        assertEquals(5.0, c.minDeslocamento, 0.001)
+        assertEquals(283.5, c.kmViagem, 0.001)
+        assertEquals(235.0, c.minViagem, 0.001)
+    }
+
+    /**
+     * "99Pop" colado: o 99 seguido de letra não tem borda de palavra, então o nome
+     * da categoria é que identifica o app quando a leitura não traz o pacote.
+     */
+    @Test
+    fun identifica99PeloNomeDaCategoriaSemPacote() {
+        val c = RideParser.parse(
+            """
+            99Pop Pgto. no app
+            R${'$'} 12,60
+            R${'$'}1,72/km
+            4,90 · 150 corridas
+            6 min • 1,8km
+            Rua Mário Quintana, 100, Centro
+            14 min • 7,2km
+            Avenida Ipiranga, 2000, República
+            Aceitar
+            """.trimIndent()
+        )!!
+        assertEquals("99", c.app)
+        assertEquals("99Pop", c.categoria)
+        assertEquals(12.60, c.valor, 0.001)
+        assertEquals(1.8, c.kmDeslocamento, 0.001)
+        assertEquals(6.0, c.minDeslocamento, 0.001)
+        assertEquals(7.2, c.kmViagem, 0.001)
+        assertEquals(14.0, c.minViagem, 0.001)
+    }
+
+    /** Categoria "Confort" do Uber, lida no badge do card. */
+    @Test
+    fun leCategoriaConfortNoCardDoUber() {
+        val c = RideParser.parse(
+            """
+            Confort
+            R${'$'} 24,50
+            Est. de R${'$'}1,90/km
+            5 min (2.1 km)
+            Rua Carlos Gomes, 500, Centro
+            21 min (10,8 km)
+            Avenida Bibiano Vidal, 1200, Floresta
+            Aceitar
+            """.trimIndent(),
+            "com.ubercab.driver"
+        )!!
+        assertEquals("Uber", c.app)
+        assertEquals("Confort", c.categoria)
+        assertEquals(24.50, c.valor, 0.001)
+        assertEquals(12.9, c.kmTotal, 0.001)
+        assertEquals(26.0, c.minTotal, 0.001)
+    }
+
+    /**
+     * Card do Uber (foto nova) com dois trechos de 9 min — um escrito "min", outro
+     * "minutos": os dois têm de entrar na conta, um como busca e outro como viagem.
+     */
+    @Test
+    fun leDoisNoveMinutosNoCardDoUber() {
+        val c = RideParser.parse(
+            """
+            UberX
+            R${'$'} 8,75
+            Est. de R${'$'}1,05/km
+            4,88 (3832)
+            Verificado
+            9 min (4.4 km)
+            Avenida Dorival Cândido Luz de Oliveira, Barnabé, Gravataí
+            9 minutos (3.9 km)
+            Rua Polivalente, 36, Gravataí, Gravataí
+            Tenho interesse
+            """.trimIndent(),
+            "com.ubercab.driver"
+        )!!
+        assertEquals("UberX", c.categoria)
+        assertEquals(8.75, c.valor, 0.001)
+        assertEquals(8.3, c.kmTotal, 0.001)
+        assertEquals(18.0, c.minTotal, 0.001)
+        assertEquals(1.05, c.valor / c.kmTotal, 0.01)
+    }
 }

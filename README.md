@@ -6,7 +6,7 @@ App Android que lê o card de corrida do **Uber** e da **99** em qualquer tela (
 
 ```
 pacote: com.radardeganhos.app
-versão: 1.17 (versionCode 18)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
+versão: 1.18 (versionCode 19)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
 ```
 
 O APK sai do próprio Android Studio (aba **Build › Build App Bundle(s) / APK(s) › Build APK(s)**)
