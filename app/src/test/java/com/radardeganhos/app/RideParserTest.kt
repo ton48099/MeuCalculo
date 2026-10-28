@@ -244,4 +244,98 @@ class RideParserTest {
         assertEquals(5.89, NumberParse.toDouble("5.89") ?: 0.0, 0.001)
         assertNull(NumberParse.toDouble(""))
     }
+
+    // ---- cards das capturas de 28/10 (Uber e 99 Motorista atuais) ----------
+
+    /**
+     * Card da 99 com ofertas alternativas embaixo ("R$10,73  R$11,24  R$11,75").
+     * O valor da corrida é o do topo, R$ 10,22 — antes o parser pegava o maior R$ da
+     * tela e lia R$ 11,75, o que estragava a conta e o veredito.
+     */
+    @Test
+    fun valorEhODoTopoDoCardENaoDaOfertaAlternativa() {
+        val c = RideParser.parse(
+            """
+            Negocia Pgto. no app
+            R${'$'}10,22
+            R${'$'}1,29/km
+            4,83 · 209 corridas
+            CPF e Cartão verif.
+            6 min (1.2 km)
+            Avenida Venâncio Aires, 449, Cidade Baixa
+            15 min (6.8 km)
+            Clínica Iguatemi, Avenida Dr. Nilo Peçanha, 2811 - Conj 1304
+            Aceitar por R${'$'}10,22
+            R${'$'}10,73
+            R${'$'}11,24
+            R${'$'}11,75
+            """.trimIndent(),
+            "com.taxis99"
+        )!!
+        assertEquals(10.22, c.valor, 0.001)
+        assertEquals(1.2, c.kmDeslocamento, 0.001)
+        assertEquals(6.0, c.minDeslocamento, 0.001)
+        assertEquals(6.8, c.kmViagem, 0.001)
+        assertEquals(15.0, c.minViagem, 0.001)
+        assertEquals(1.29, c.precoPorKmApp ?: 0.0, 0.001)
+        assertEquals("99", c.app)
+    }
+
+    /**
+     * 99 Motorista (com.app99.driver): o card não tem a palavra "99" em lugar nenhum,
+     * então quem identifica o app é o pacote — antes saía "app não identificado" e a
+     * recusa não sabia de quem era a oferta na 2ª tela.
+     */
+    @Test
+    fun identifica99PeloPacoteDoMotorista() {
+        val c = RideParser.parse(
+            """
+            Pgto. no app
+            R${'$'}9,20 1,2x
+            R${'$'}1,89/km
+            R${'$'}1,42 por embarque distante incl.
+            ★ 4,84 · +999 corridas
+            Perfil Premium
+            6 min (1,5 km)
+            Rua Múcio Teixeira, 1392, Menino Deus
+            7 min (3,3 km)
+            Rua Eng. Luiz Englert, 333, Farroupilha
+            Aceitar (2s)
+            """.trimIndent(),
+            "com.app99.driver"
+        )!!
+        assertEquals("99", c.app)
+        assertEquals(9.20, c.valor, 0.001)
+        assertEquals(4.8, c.kmTotal, 0.001)
+        assertEquals(13.0, c.minTotal, 0.001)
+        assertEquals(1.89, c.precoPorKmApp ?: 0.0, 0.001)
+    }
+
+    /**
+     * Uber atual: "Est. de R$1,42/km" e "18 minutos (5.4 km)". A conta do app tem de
+     * bater com a estimativa que o próprio Uber mostra no card (10,08 / 7,1 km ≈ 1,42).
+     */
+    @Test
+    fun leCardAtualDoUberComEstimativaPorKm() {
+        val c = RideParser.parse(
+            """
+            UberX Exclusivo
+            R${'$'} 10,08
+            Est. de R${'$'}1,42/km
+            ★ 4,91 (303)
+            4 min (1.7 km)
+            Rua Gonçalves de Magalhães, Alvorada, Alvorada
+            18 minutos (5.4 km)
+            Rua Dois Mil e Trinta e Nove, 60, Mário Quintana, Porto Alegre
+            Aceitar
+            """.trimIndent(),
+            "com.ubercab.driver"
+        )!!
+        assertEquals("Uber", c.app)
+        assertEquals(10.08, c.valor, 0.001)
+        assertEquals(7.1, c.kmTotal, 0.001)
+        assertEquals(22.0, c.minTotal, 0.001)
+        assertEquals(1.42, c.precoPorKmApp ?: 0.0, 0.001)
+        assertEquals(1.42, c.valor / c.kmTotal, 0.01)
+    }
 }

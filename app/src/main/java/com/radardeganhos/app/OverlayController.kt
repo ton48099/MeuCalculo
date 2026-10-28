@@ -575,11 +575,11 @@ class OverlayController(
         raiz.setBackgroundColor(Color.argb(28, 0, 0, 0))
 
         val dica = TextView(contexto).apply {
-            text = "Arraste a mira até o X de recusar do ${app ?: "app"} e toque em SALVAR"
+            text = "Arraste a mira até o X do ${app ?: "app"} e toque em SALVAR"
             setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             gravity = Gravity.CENTER
-            setPadding(dp(14f), dp(10f), dp(14f), dp(10f))
+            setPadding(dp(10f), dp(6f), dp(10f), dp(6f))
             background = GradientDrawable().apply {
                 setColor(Color.argb(225, 18, 18, 18))
                 cornerRadius = dp(14f).toFloat()
@@ -591,11 +591,14 @@ class OverlayController(
             FrameLayout.LayoutParams.WRAP_CONTENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            leftMargin = dp(14f); rightMargin = dp(14f); topMargin = dp(18f)
+            leftMargin = dp(12f); rightMargin = dp(12f); topMargin = dp(12f)
         })
 
         val mira = MiraView(contexto)
-        val lado = dp(78f)
+        // 38 dp: a mira precisa caber em cima do X, não cobrir o card inteiro. Com 78 dp
+        // ela ficava maior que o próprio botão e o motorista não via onde estava mirando.
+        mira.alpha = 0.9f
+        val lado = dp(38f)
         val miraLp = FrameLayout.LayoutParams(lado, lado).apply {
             gravity = Gravity.TOP or Gravity.LEFT
         }
@@ -633,9 +636,9 @@ class OverlayController(
         val salvar = TextView(contexto).apply {
             text = "SALVAR"
             setTextColor(Color.BLACK)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
             gravity = Gravity.CENTER
-            setPadding(dp(26f), dp(14f), dp(26f), dp(14f))
+            setPadding(dp(22f), dp(12f), dp(22f), dp(12f))
             background = GradientDrawable().apply {
                 setColor(Color.rgb(255, 196, 0))
                 cornerRadius = dp(14f).toFloat()
@@ -644,9 +647,9 @@ class OverlayController(
         val cancelar = TextView(contexto).apply {
             text = "CANCELAR"
             setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
             gravity = Gravity.CENTER
-            setPadding(dp(20f), dp(14f), dp(20f), dp(14f))
+            setPadding(dp(18f), dp(12f), dp(18f), dp(12f))
             background = GradientDrawable().apply {
                 setColor(Color.argb(225, 45, 45, 45))
                 cornerRadius = dp(14f).toFloat()
@@ -665,7 +668,7 @@ class OverlayController(
             FrameLayout.LayoutParams.WRAP_CONTENT
         ).apply {
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-            bottomMargin = dp(42f)
+            bottomMargin = dp(28f)
         })
 
         cancelar.setOnClickListener { cancelarCalibracao() }

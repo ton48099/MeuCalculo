@@ -6,7 +6,7 @@ App Android que lê o card de corrida do **Uber** e da **99** em qualquer tela (
 
 ```
 pacote: com.radardeganhos.app
-versão: 1.15 (versionCode 16)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
+versão: 1.16 (versionCode 17)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
 ```
 
 O APK sai do próprio Android Studio (aba **Build › Build App Bundle(s) / APK(s) › Build APK(s)**)
@@ -165,16 +165,20 @@ ajuste fino (servem, por exemplo, para recusar também uma MÉDIA) — abaixo de
 
 | Critério | Padrão |
 |---|---|
+| veredito do card | **RUIM recusa** |
 | km no total (pick-up + viagem) | desligado |
 | minutos no total | desligado |
-| R$ por hora (bruto) | 35,00 |
-| R$ por km (bruto) | 1,30 |
+| R$ por hora (bruto) | desligado |
+| R$ por km (bruto) | desligado |
 
-Os dois últimos são os mesmos valores do semáforo vermelho, então “recusar o que está vermelho” é o
-comportamento de fábrica. Os valores usados são os **brutos** do card, os mesmos que pintam as cores.
+O critério de fábrica é **só o veredito**: corrida BOA, MÉDIA ou ÓTIMA nunca é recusada. Os mínimos
+numéricos são ajuste fino e vêm **desligados (0)** — na 1.15 eles vinham iguais ao vermelho do semáforo
+(35,00/h e 1,30/km) e recusavam corrida boa; quem atualiza tem esses dois zerados automaticamente,
+e quem já tinha ajustado um valor à mão mantém o valor.
 
 **Onde fica o X.** O X do Uber não está no mesmo lugar do X da 99, e cada app desenha o botão do seu jeito.
-O app procura em três degraus: (1) o X que **você ensinou** — quando você recusa uma oferta à mão com o card
+A mira para ensinar tem o tamanho do próprio X (38 dp) e é arrastável: deixe o centro dela em cima do X
+e toque em SALVAR. O app procura em três degraus: (1) o X que **você ensinou** — quando você recusa uma oferta à mão com o card
 na tela, o app guarda a impressão daquele botão por app; (2) descrição/id que dizem “fechar”, “recusar”,
 “decline”, “close”; (3) geometria (botão pequeno colado na borda de cima). Sem botão encontrado, **nada é
 clicado** e o diagnóstico diz o motivo.
@@ -227,6 +231,11 @@ Os cards são lidos com regras próprias para os dois formatos que aparecem nas 
 - Uber: `R$11.65`, `R$2.24/km est.`, `2 min (0.3 km) de distância`, `Viagem de 12 min (4.9 km)`, `1 h e 43 min (95,7 km)`
 - 99: `R$54,89`, `R$2,20 por km`, `5Min (2,5km)`, `32Min (6,3km)`, `Dinheiro`, `Taxa de deslocamento`
 
+O valor é sempre o **primeiro R$ do card** (o do topo), nunca o maior da tela: a 99 mostra ofertas
+alternativas embaixo (`R$10,73  R$11,24  R$11,75`) e o maior delas tomava o lugar do valor real. O app
+também é identificado pelo pacote, então o **99 Motorista** (`com.app99.driver`) aparece como `99` — antes
+saía “app não identificado” porque o card dele não tem a palavra “99”.
+
 ## Privacidade
 
 O OCR é o ML Kit embarcado, roda no próprio aparelho. O app não tem servidor e não envia texto para
@@ -239,7 +248,7 @@ Requisitos: JDK 17, Android SDK 34 (o wrapper usa Gradle 9.6).
 
 ```bash
 ./gradlew :app:assembleRelease      # gera app/build/outputs/apk/release/app-release.apk
-./gradlew :app:testDebugUnitTest    # 103 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, recusa automática (critérios, veredito RUIM, escolha do X, contagem, X ensinado à mão por tela)
+./gradlew :app:testDebugUnitTest    # 109 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, recusa automática (só veredito RUIM de fábrica, critérios opcionais, escolha do X, contagem, X ensinado à mão por tela), valor do topo do card e 99 Motorista identificada pelo pacote
 ```
 
 Se o Android Studio estiver instalado, o JDK dele serve (`C:\Program Files\Android\Android Studio\jbr`);

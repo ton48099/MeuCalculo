@@ -110,13 +110,19 @@ object RideParser {
 
     fun detectApp(text: String, packageHint: String? = null): String? {
         val pkg = packageHint?.lowercase() ?: ""
+        // O pacote é a pista mais confiável e vem primeiro. O 99 Motorista é
+        // com.app99.driver e o card dele não tem a palavra "99" em canto nenhum — era
+        // por isso que o card da 2ª tela saía como "app não identificado".
+        when (AutoScanPolicy.familiaDe(pkg)) {
+            AutoScanPolicy.FAMILIA_UBER -> return "Uber"
+            AutoScanPolicy.FAMILIA_99 -> return "99"
+        }
         val t = text.lowercase()
         return when {
-            pkg.contains("ubercab") || pkg.contains("uber") -> "Uber"
-            pkg.contains("taxis99") || pkg == "com.taxis99" -> "99"
             t.contains("uberx") || t.contains("uber black") || t.contains("uber comfort") -> "Uber"
             t.contains("uber") -> "Uber"
-            t.contains("99app") || noventaENove.containsMatchIn(t) -> "99"
+            t.contains("99app") || t.contains("99 motorista") || t.contains("99motorista") ||
+                t.contains("99 driver") || noventaENove.containsMatchIn(t) -> "99"
             else -> null
         }
     }
@@ -124,6 +130,9 @@ object RideParser {
     /**
      * Tenta ler um card a partir de um texto (OCR ou digitado).
      * Retorna null quando não há elementos mínimos (valor + alguma distância).
+     *
+     * O valor é o primeiro R$ do card (topo), não o maior da tela: a 99 lista ofertas
+     * alternativas abaixo do card e o maior valor delas tomava o lugar do valor real.
      */
     fun parse(raw: String, packageHint: String? = null): RideCard? {
         if (raw.isBlank()) return null
@@ -222,12 +231,17 @@ object RideParser {
             }
         }
 
-        // 4) Valor: o maior "R$" do card (o preço por km já foi removido).
+        // 4) Valor: o PRIMEIRO "R$" do card, que é onde o app escreve o valor da oferta
+        // (o preço por km e as taxas já foram removidos ou vêm depois dele).
+        //
+        // Antes era o MAIOR R$ do texto. No card da 99 que mostra ofertas alternativas
+        // embaixo ("R$10,73  R$11,24  R$11,75") o maior virava o valor da corrida —
+        // a conta e o veredito saíam errados a partir de R$ 11,75 em vez de R$ 10,22.
         val valores = moneyRegex.findAll(semPrecoKm)
             .mapNotNull { NumberParse.toDouble(it.groupValues[1]) }
             .filter { it >= 1.0 }
             .toList()
-        val valor = valores.maxOrNull() ?: return null
+        val valor = valores.firstOrNull() ?: return null
 
         val card = RideCard(
             app = detectApp(raw, packageHint),

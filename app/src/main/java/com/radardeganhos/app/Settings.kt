@@ -93,10 +93,16 @@ data class Settings(
     val recusaMinKm: Double = 0.0,
     /** Corrida mais curta que isto (minutos no total) é recusada. 0 = não usa. */
     val recusaMinMin: Double = 0.0,
-    /** R$/hora abaixo disto é recusado. 0 = não usa. */
-    val recusaMinHora: Double = 35.0,
-    /** R$/km abaixo disto é recusado. 0 = não usa. */
-    val recusaMinPorKm: Double = 1.30,
+    /**
+     * R$/hora abaixo disto é recusado. 0 = não usa (padrão).
+     *
+     * Vem desligado de fábrica desde a 1.16: quem manda na recusa é o veredito do
+     * card. Com 35,00 aqui, uma corrida BOA (mas abaixo do vermelho do semáforo) era
+     * recusada — foi a reclamação de "recusou corrida boa".
+     */
+    val recusaMinHora: Double = 0.0,
+    /** R$/km abaixo disto é recusado. 0 = não usa (padrão, desde a 1.16). */
+    val recusaMinPorKm: Double = 0.0,
     /** Semáforo do R$/minuto (por minuto, igual à escala do R$/hora). */
     val semaforoMinutoBom: Double = 0.75,
     val semaforoMinutoRuim: Double = 0.58
@@ -110,12 +116,16 @@ object Prefs {
     private const val FILE = "radar_prefs"
 
     /** Versão do arquivo de configurações: serve para trocar padrões já gravados. */
-    private const val VERSAO = 3
+    private const val VERSAO = 4
     private const val CHAVE_VERSAO = "prefsVersao"
 
     /** Padrões antigos, só para saber se o motorista nunca mexeu no campo. */
     private const val INTERVALO_ANTIGO = 6
     private const val POSICAO_ANTIGA = "centro"
+
+    /** Mínimos de recusa que vinham de fábrica até a 1.15 (iguais ao vermelho do semáforo). */
+    private const val MIN_HORA_ANTIGO = 35.0
+    private const val MIN_KM_ANTIGO = 1.30
 
     private fun sp(c: Context): SharedPreferences =
         c.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -144,6 +154,19 @@ object Prefs {
             // A contagem regressiva é sempre mostrada, para dar tempo de cancelar.
             ed.putBoolean("recusaAtiva", true)
             ed.putBoolean("recusaSoAviso", false)
+        }
+        if (versao < 4) {
+            // 1.16: a recusa passa a olhar SÓ o veredito do card (RUIM). Os mínimos de
+            // R$/hora e R$/km vinham iguais ao vermelho do semáforo e recusavam corrida
+            // BOA/MÉDIA — era a reclamação de "recusou corrida boa". Quem nunca mexeu
+            // neles fica com 0 (critério desligado), que é o padrão novo; quem ajustou
+            // à mão continua com o valor que escolheu.
+            fun eraOMinimoAntigo(chave: String, antigo: Double): Boolean {
+                val lido = p.getString(chave, null)?.let { NumberParse.toDouble(it) } ?: return false
+                return kotlin.math.abs(lido - antigo) < 0.001
+            }
+            if (eraOMinimoAntigo("recusaMinHora", MIN_HORA_ANTIGO)) ed.putString("recusaMinHora", "0.0")
+            if (eraOMinimoAntigo("recusaMinPorKm", MIN_KM_ANTIGO)) ed.putString("recusaMinPorKm", "0.0")
         }
         ed.putInt(CHAVE_VERSAO, VERSAO).apply()
     }

@@ -89,10 +89,13 @@ class RecusaTest {
         assertTrue(Recusa.motivos(Calculator.analyze(uberBoa, s), s).isEmpty())
     }
 
-    /** R$ 6,89 por 6,2 km e 14 min: R$ 1,11/km e R$ 29,53/h — reprova no veredito e nos dois mínimos. */
+    /**
+     * R$ 6,89 por 6,2 km e 14 min: R$ 1,11/km e R$ 29,53/h — reprova no veredito e nos
+     * dois mínimos, quando o motorista liga esses mínimos à mão.
+     */
     @Test
     fun corridaBarataERecusadaPeloVereditoEPelosDoisCriterios() {
-        val s = ligada()
+        val s = ligada("hora" to 35.0, "porKm" to 1.30)
         val motivos = Recusa.motivos(Calculator.analyze(uberRuim, s), s)
         assertEquals(3, motivos.size)
         assertTrue(motivos.any { it.contains("RUIM") })
@@ -110,6 +113,23 @@ class RecusaTest {
         val motivos = Recusa.motivos(Calculator.analyze(uberRuim, s), s)
         assertEquals(1, motivos.size)
         assertTrue(motivos.first().contains("RUIM"))
+    }
+
+    /**
+     * De fábrica a recusa olha SÓ o veredito do card: RUIM recusa, BOA e MÉDIA passam.
+     * Era isso que faltava — com os mínimos antigos (35/h e 1,30/km) corrida boa caía.
+     */
+    @Test
+    fun deFabricaSoCorridaRuimERecusada() {
+        val s = ligada()
+        assertTrue(Recusa.motivos(Calculator.analyze(uberRuim, s), s).isNotEmpty())
+        assertTrue(Recusa.motivos(Calculator.analyze(uberBoa, s), s).isEmpty())
+
+        // R$ 12,79 no mesmo trajeto: nota ~90%, ou seja, MÉDIA. Também passa.
+        val media = uberBom.copy(valor = 12.79)
+        val aMedia = Calculator.analyze(media, s)
+        assertEquals(Veredito.MEDIA, aMedia.veredito)
+        assertTrue(Recusa.motivos(aMedia, s).isEmpty())
     }
 
     /** A 99 de R$ 6,90 vale R$ 2,56/km e R$ 51,75/h: é barata, mas passa nos mínimos. */
@@ -148,7 +168,7 @@ class RecusaTest {
             precoPorKmApp = null, taxaDeslocamento = null,
             avisos = emptyList(), textoOriginal = ""
         )
-        val comKm = ligada("hora" to 0.0)
+        val comKm = ligada("hora" to 0.0, "porKm" to 1.30)
         val motivos = Recusa.motivos(Calculator.analyze(card, comKm), comKm)
         assertEquals(2, motivos.size)
         assertTrue(motivos.any { it.contains("1,00") && it.contains("/km") })
@@ -363,8 +383,8 @@ class RecusaTest {
         assertEquals(8, s.recusaSegundos)
         assertEquals(6.5, s.recusaMinKm, 0.001)
         assertEquals(42.0, s.recusaMinHora, 0.001)
-        // O que não foi mexido continua no padrão.
-        assertEquals(1.30, s.recusaMinPorKm, 0.001)
+        // O que não foi mexido continua no padrão (mínimos desligados desde a 1.16).
+        assertEquals(0.0, s.recusaMinPorKm, 0.001)
     }
 
     @Test
@@ -384,7 +404,41 @@ class RecusaTest {
         assertEquals(5, s.recusaSegundos)
         assertEquals(0.0, s.recusaMinKm, 0.001)
         assertEquals(0.0, s.recusaMinMin, 0.001)
-        assertEquals(35.0, s.recusaMinHora, 0.001)
-        assertEquals(1.30, s.recusaMinPorKm, 0.001)
+        // Mínimos numéricos desligados: quem recusa é o veredito RUIM do card.
+        assertEquals(0.0, s.recusaMinHora, 0.001)
+        assertEquals(0.0, s.recusaMinPorKm, 0.001)
+    }
+
+    /**
+     * Quem já tem o app instalado: os mínimos de 35,00/h e 1,30/km que vinham de fábrica
+     * na 1.15 recusavam corrida boa. Na atualização eles viram 0 (desligados).
+     */
+    @Test
+    fun migracaoDesligaOsMinimosAntigosDeFabrica() {
+        val ctx: Context = ApplicationProvider.getApplicationContext()
+        ctx.getSharedPreferences("radar_prefs", Context.MODE_PRIVATE).edit()
+            .putString("recusaMinHora", "35.0")
+            .putString("recusaMinPorKm", "1.3")
+            .putInt("prefsVersao", 3)
+            .apply()
+
+        val s = Prefs.load(ctx)
+        assertEquals(0.0, s.recusaMinHora, 0.001)
+        assertEquals(0.0, s.recusaMinPorKm, 0.001)
+    }
+
+    /** Quem ajustou um mínimo à mão mantém o valor dele na atualização. */
+    @Test
+    fun migracaoRespeitaMinimoAjustadoAMao() {
+        val ctx: Context = ApplicationProvider.getApplicationContext()
+        ctx.getSharedPreferences("radar_prefs", Context.MODE_PRIVATE).edit()
+            .putString("recusaMinHora", "42.0")
+            .putString("recusaMinPorKm", "2.5")
+            .putInt("prefsVersao", 3)
+            .apply()
+
+        val s = Prefs.load(ctx)
+        assertEquals(42.0, s.recusaMinHora, 0.001)
+        assertEquals(2.5, s.recusaMinPorKm, 0.001)
     }
 }
