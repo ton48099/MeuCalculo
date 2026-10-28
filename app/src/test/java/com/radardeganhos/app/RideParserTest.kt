@@ -176,6 +176,22 @@ class RideParserTest {
     }
 
     @Test
+    fun corridaLongaDe1hE19minNaoVira9Min() {
+        // Card real do Uber: "1 h e 19 min (71,7 km)". Quando o OCR perde o "1h" e
+        // sobra "9 min (71,7 km)", 478 km/h denuncia o erro e o tempo é recuperado.
+        val certo = RideParser.parse(
+            "R\$ 118,89 Est. de R\$1,63/km 4 min (1.3 km) 1 h e 19 min (71.7 km)", "com.ubercab.driver"
+        )!!
+        assertEquals(79.0, certo.minViagem, 0.01)
+        assertEquals(71.7, certo.kmViagem, 0.01)
+
+        val ocrPerdeuAHora = RideParser.parse(
+            "R\$ 118,89 4 min (1.3 km) 1 h e 19 min 9 min (71.7 km)", "com.ubercab.driver"
+        )!!
+        assertEquals(79.0, ocrPerdeuAHora.minViagem, 0.01)
+    }
+
+    @Test
     fun numerosBrasileiros() {
         assertEquals(1234.56, NumberParse.toDouble("1.234,56") ?: 0.0, 0.001)
         assertEquals(11.65, NumberParse.toDouble("11.65") ?: 0.0, 0.001)

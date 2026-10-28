@@ -41,7 +41,7 @@ object RideParser {
     private val moneyRegex = Regex(MONEY)
     private val taxaRegex = Regex("""taxa\s+de\s+deslocamento[^0-9]{0,16}(?:r\$|rs\.?)\s*(\d+(?:[.,]\d{1,2})?)""")
 
-    private val pairHM = Regex("""(\d+)\s*h\s*(\d{1,2})\s*min\s*[\(\[]?\s*(\d+(?:[.,]\d+)?)\s*km""")
+    private val pairHM = Regex("""(\d+)\s*h\s*(?:e\s*)?(\d{1,2})\s*min\s*[\(\[]?\s*(\d+(?:[.,]\d+)?)\s*km""")
     private val pairH = Regex("""(\d+)\s*h\s*[\(\[]?\s*(\d+(?:[.,]\d+)?)\s*km""")
     private val pairMin = Regex("""(\d+)\s*min\s*\(?\s*(\d+(?:[.,]\d+)?)\s*km""")
     private val pairMinMeters = Regex("""(\d+)\s*min\s*\(?\s*(\d{2,5})\s*m\b""")
@@ -181,6 +181,20 @@ object RideParser {
                 }
                 avisos.add("Card lido sem o padrão completo (tempo/distância)")
             }
+        }
+
+        // O Uber escreve "1 h e 19 min (71,7 km)". Quando o OCR perde o "1h" e sobra
+        // "9 min (71,7 km)", a conta dá 478 km/h — impossível. Se o texto traz a hora
+        // escrita em algum lugar, esse é o tempo real da viagem.
+        val horasNoTexto = tempoIsoladoHM.find(norm)?.let {
+            (it.groupValues[1].toDoubleOrNull() ?: 0.0) * 60 +
+                (it.groupValues[2].toDoubleOrNull() ?: 0.0)
+        }
+        if (horasNoTexto != null && horasNoTexto > 0 && minVia > 0 && kmVia > 0 &&
+            kmVia / (minVia / 60.0) > 120.0 && horasNoTexto > minVia
+        ) {
+            minVia = horasNoTexto
+            avisos.add("Tempo da viagem recuperado do formato \"1 h e 19 min\"")
         }
 
         // 4) Valor: o maior "R$" do card (o preço por km já foi removido).

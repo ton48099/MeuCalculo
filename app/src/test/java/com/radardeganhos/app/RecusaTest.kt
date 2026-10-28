@@ -189,6 +189,24 @@ class RecusaTest {
     }
 
     @Test
+    fun oXDoCardDoUberEhAchadoForaDaBordaDaJanela() {
+        // O X do Uber fica no canto do card de oferta, e o card não encosta na borda
+        // da janela: sem olhar a faixa de cima à direita ele nunca era achado.
+        val xDoCard = botao(x = 620, y = 430)
+        val mapa = botao(x = 300, y = 700)
+        assertEquals(xDoCard, escolher(mapa, xDoCard))
+    }
+
+    @Test
+    fun oMenuDoCabecalhoNaoGanhaDoXDoCard() {
+        // O "..." do cabeçalho está mais perto do canto, mas quem recusa a oferta é
+        // o X do card, logo abaixo do cabeçalho.
+        val menu = botao(x = 742, y = 18)
+        val xDoCard = botao(x = 700, y = 430)
+        assertEquals(xDoCard, escolher(menu, xDoCard))
+    }
+
+    @Test
     fun oBotaoAprendidoGanhaDeTudo() {
         val aprendido = XAprendido(id = "reject_btn", descricao = "", relX = 0.95, relY = 0.66)
         val aprendidoCerto = botao(id = "reject_btn", x = 740, y = 640)

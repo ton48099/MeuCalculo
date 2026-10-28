@@ -13,6 +13,29 @@ O APK sai do próprio Android Studio (aba **Build › Build App Bundle(s) / APK(
 ou pela linha de comando em `app/build/outputs/apk/release/`. Instala por cima das versões
 anteriores mantendo as configurações salvas.
 
+## Publicar uma versão nova
+
+Um comando compila e publica (use `-Simulacao` para ver o plano sem alterar nada):
+
+```
+.\publicar.cmd -Resumo "o que mudou" -Notas "notas que aparecem na release"
+```
+
+O script soma 1 no `versionCode`, atualiza o `versionName`, gera o APK assinado em `dist/`,
+commita, faz push, cria a tag `v<versão>`, abre a release no GitHub e anexa o APK.
+
+| Opção | Para quê |
+|---|---|
+| `-Versao 1.10` | escolhe o número (padrão: sobe o último, `1.9` → `1.10`) |
+| `-Notas "..."` ou `-NotasArquivo notas.md` | texto da release |
+| `-Simulacao` | mostra tudo sem build, commit ou envio |
+| `-SemBump` | publica a versão que já está no `build.gradle.kts`, sem somar 1 |
+| `-SemPush` | para antes do GitHub: só o commit local é feito |
+| `-PularBuild` | reaproveita o último APK compilado |
+
+Rode sempre pelo `publicar.cmd`: o Windows bloqueia `.ps1` por padrão (política de execução),
+e o `.cmd` já contorna isso sem mudar configuração do sistema.
+
 ## Instalação
 
 1. Copie o APK para o celular (WhatsApp, Drive, cabo USB).

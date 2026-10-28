@@ -35,8 +35,10 @@ object PanelBinder {
             setStroke(dp(1f), Color.argb(70, Color.red(cor), Color.green(cor), Color.blue(cor)))
         }
 
+        // De qual app veio o card: é a primeira coisa que o motorista precisa saber
+        // quando o Uber e a 99 tocam uma oferta cada um, ao mesmo tempo.
         v.findViewById<TextView>(R.id.tvApp).text = buildString {
-            append(if (a.card.app != null) "card ${a.card.app}" else "leitura de tela")
+            append(a.card.app ?: "app não identificado")
             append(" · nota ")
             append(Math.round(a.score))
             append("%")

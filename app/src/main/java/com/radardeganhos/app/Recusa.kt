@@ -28,7 +28,11 @@ data class BotaoCandidato(
     val topo: Int,
     val direita: Int,
     val base: Int,
-    /** O próprio nó é clicável? Quando não é, o app clica no pai clicável mais próximo. */
+    /**
+     * O botão tem alvo de clique? Vale para o próprio nó e para o pai clicável mais
+     * próximo — é assim que o X do Uber aparece na árvore: um ícone sem clique dentro
+     * de um FrameLayout clicável. Olhar só o `isClickable` do ícone escondia o X.
+     */
     val clicavel: Boolean
 ) {
     val largura: Int get() = direita - esquerda
@@ -180,6 +184,15 @@ object Recusa {
             abs(c.centroX - janela.left)
         ) < janela.width() * FRACAO_BORDA
         val alturaRelativa = (c.centroY - janela.top).toDouble() / janela.height()
+        val daDireita = (c.centroX - janela.left).toDouble() / janela.width().coerceAtLeast(1)
+
+        // O X dos dois apps é um botão pequeno e quadrado, no alto à direita. No Uber
+        // ele fica no canto do card de oferta — e o card não encosta na borda da janela,
+        // então a regra de "colado na borda" sozinha não achava. Na 99 ele fica no canto
+        // da própria tela. Esta faixa cobre os dois casos.
+        val quadrado = c.altura > 0 && c.largura.toDouble() / c.altura in 0.55..1.8
+        val cantoSuperiorDireito = quadrado && daDireita >= 0.6 && alturaRelativa <= 0.6
+
         val mesmoLugar = aprendido != null &&
             abs(relX(c, janela) - aprendido.relX) < 0.04 &&
             abs(relY(c, janela) - aprendido.relY) < 0.04
@@ -189,14 +202,19 @@ object Recusa {
             mesmaDescricao || mesmoLugar -> 3
             casaDescricao || casaId -> 2
             pertoDaBorda && alturaRelativa < 0.85 -> 1
+            cantoSuperiorDireito -> 1
             else -> 0
         }
         if (degrau == 0) return 0
 
-        // Desempate dentro do degrau: mais colado na borda e mais alto é melhor.
+        // Desempate dentro do degrau: colado na borda e à direita é melhor. Mas o X do
+        // card fica logo ABAIXO do cabeçalho do app, e é lá que fica o "..." — por isso
+        // a faixa de 12% a 60% da altura ganha do topo puro, senão o app clicava no menu.
         var extra = 0
         if (pertoDaBorda) extra += 4
-        extra += ((1.0 - alturaRelativa) * 4).toInt().coerceIn(0, 4)
+        if (alturaRelativa in 0.12..0.60) extra += 4
+        extra += ((1.0 - alturaRelativa) * 2).toInt().coerceIn(0, 2)
+        extra += ((daDireita - 0.5).coerceAtLeast(0.0) * 4).toInt().coerceIn(0, 2)
         if (c.clicavel) extra += 1
         return degrau * 100 + extra
     }
