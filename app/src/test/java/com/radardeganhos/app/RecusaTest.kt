@@ -10,7 +10,6 @@ import android.widget.EditText
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -23,8 +22,10 @@ import org.robolectric.annotation.Config
  * Recusa automática: quais corridas são recusadas e qual botão o app aperta.
  *
  * Os cards usados aqui são os das capturas reais do motorista — o Uber X de R$ 11,65
- * (que passa), a Uber a R$ 6,89 por 6,2 km (que reprova) e a 99 de R$ 6,90 (que passa
- * mesmo sendo barata, porque por km e por hora ela vale a pena).
+ * (que passa nos mínimos, mas o veredito padrão dá RUIM), a Uber a R$ 6,89 por 6,2 km
+ * (que reprova) e a 99 de R$ 6,90 (que passa mesmo sendo barata, porque por km e por
+ * hora ela vale a pena). O critério principal da recusa é o veredito RUIM que o card
+ * mostra; os mínimos numéricos continuam como ajuste fino.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33], qualifiers = "pt-rBR-w411dp-h891dp-xxhdpi")
@@ -38,6 +39,9 @@ class RecusaTest {
         precoPorKmApp = 2.24, taxaDeslocamento = null,
         avisos = emptyList(), textoOriginal = ""
     )
+
+    /** O mesmo trajeto pagando R$ 20,00: aí o veredito é ÓTIMA e a corrida passa. */
+    private val uberBoa = uberBom.copy(valor = 20.0)
 
     // Uber da captura do modo desktop: R$ 6,89 · 10 min (4,6 km) + 4 min (1,6 km).
     private val uberRuim = RideCard(
@@ -75,23 +79,37 @@ class RecusaTest {
 
     @Test
     fun desligadaNaoRecusaNada() {
-        assertTrue(Recusa.motivos(Calculator.analyze(uberRuim, Settings()), Settings()).isEmpty())
+        val s = Settings().copy(recusaAtiva = false)
+        assertTrue(Recusa.motivos(Calculator.analyze(uberRuim, s), s).isEmpty())
     }
 
     @Test
     fun corridaBoaPassa() {
         val s = ligada()
-        assertTrue(Recusa.motivos(Calculator.analyze(uberBom, s), s).isEmpty())
+        assertTrue(Recusa.motivos(Calculator.analyze(uberBoa, s), s).isEmpty())
     }
 
-    /** R$ 6,89 por 6,2 km e 14 min: R$ 1,11/km e R$ 29,53/h — reprova nos dois. */
+    /** R$ 6,89 por 6,2 km e 14 min: R$ 1,11/km e R$ 29,53/h — reprova no veredito e nos dois mínimos. */
     @Test
-    fun corridaBarataERecusadaPelosDoisCriterios() {
+    fun corridaBarataERecusadaPeloVereditoEPelosDoisCriterios() {
         val s = ligada()
         val motivos = Recusa.motivos(Calculator.analyze(uberRuim, s), s)
-        assertEquals(2, motivos.size)
+        assertEquals(3, motivos.size)
+        assertTrue(motivos.any { it.contains("RUIM") })
         assertTrue(motivos.any { it.contains("1,11") && it.contains("/km") })
         assertTrue(motivos.any { it.contains("29,53") && it.contains("/h") })
+    }
+
+    /**
+     * O critério que o motorista vê no card é o veredito: uma corrida RUIM é recusada
+     * mesmo com os mínimos numéricos zerados.
+     */
+    @Test
+    fun vereditoRuimRecusaMesmoComOsMinimosZerados() {
+        val s = ligada("km" to 0.0, "min" to 0.0, "hora" to 0.0, "porKm" to 0.0)
+        val motivos = Recusa.motivos(Calculator.analyze(uberRuim, s), s)
+        assertEquals(1, motivos.size)
+        assertTrue(motivos.first().contains("RUIM"))
     }
 
     /** A 99 de R$ 6,90 vale R$ 2,56/km e R$ 51,75/h: é barata, mas passa nos mínimos. */
@@ -104,24 +122,25 @@ class RecusaTest {
     @Test
     fun minimoDeKmRecusaCorridaCurta() {
         val s = ligada("km" to 6.0)
-        val motivos = Recusa.motivos(Calculator.analyze(uberBom, s), s)
+        val motivos = Recusa.motivos(Calculator.analyze(uberBoa, s), s)
         assertEquals(1, motivos.size)
         assertTrue(motivos.first().contains("5,2 km"))
         // Sem o critério (0 = desligado), a mesma corrida passa.
-        assertTrue(Recusa.motivos(Calculator.analyze(uberBom, ligada()), ligada()).isEmpty())
+        assertTrue(Recusa.motivos(Calculator.analyze(uberBoa, ligada()), ligada()).isEmpty())
     }
 
     @Test
     fun minimoDeMinutosRecusaCorridaCurta() {
         val s = ligada("min" to 20.0)
-        val motivos = Recusa.motivos(Calculator.analyze(uberBom, s), s)
+        val motivos = Recusa.motivos(Calculator.analyze(uberBoa, s), s)
         assertEquals(1, motivos.size)
         assertTrue(motivos.first().contains("14 min"))
     }
 
     @Test
-    fun minimosZeradosDesligamOCriterio() {
-        // R$ 20 por 20 km e 20 min: R$ 1,00/km (ruim) e R$ 60/h (bom).
+    fun minimosZeradosDesligamCadaCriterio() {
+        // R$ 20 por 20 km e 20 min: R$ 1,00/km bruto (o mínimo de 1,30 reprova), mas
+        // o card pinta RUIM — então a recusa continua pelo veredito.
         val card = RideCard(
             app = "Uber", valor = 20.0,
             kmDeslocamento = 0.0, minDeslocamento = 0.0,
@@ -129,10 +148,16 @@ class RecusaTest {
             precoPorKmApp = null, taxaDeslocamento = null,
             avisos = emptyList(), textoOriginal = ""
         )
-        val comKm = ligada()
-        assertEquals(1, Recusa.motivos(Calculator.analyze(card, comKm), comKm).size)
-        val semKm = ligada("porKm" to 0.0)
-        assertTrue(Recusa.motivos(Calculator.analyze(card, semKm), semKm).isEmpty())
+        val comKm = ligada("hora" to 0.0)
+        val motivos = Recusa.motivos(Calculator.analyze(card, comKm), comKm)
+        assertEquals(2, motivos.size)
+        assertTrue(motivos.any { it.contains("1,00") && it.contains("/km") })
+        assertTrue(motivos.any { it.contains("RUIM") })
+
+        val semKm = ligada("hora" to 0.0, "porKm" to 0.0)
+        val soVeredito = Recusa.motivos(Calculator.analyze(card, semKm), semKm)
+        assertEquals(1, soVeredito.size)
+        assertTrue(soVeredito.first().contains("RUIM"))
     }
 
     /** Leitura incompleta não vira recusa: o app prefere deixar passar a errar. */
@@ -318,14 +343,13 @@ class RecusaTest {
     @Test
     fun padroesDaRecusaDeFabrica() {
         val s = Settings()
-        assertFalse(s.recusaAtiva)
-        assertTrue(s.recusaSoAviso)
+        // A recusa vem ligada e clicando: a contagem no card é a chance de cancelar.
+        assertTrue(s.recusaAtiva)
+        assertFalse(s.recusaSoAviso)
         assertEquals(5, s.recusaSegundos)
         assertEquals(0.0, s.recusaMinKm, 0.001)
         assertEquals(0.0, s.recusaMinMin, 0.001)
         assertEquals(35.0, s.recusaMinHora, 0.001)
         assertEquals(1.30, s.recusaMinPorKm, 0.001)
-        assertTrue(s.cardContagem)
-        assertNotNull(s)
     }
 }

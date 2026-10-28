@@ -76,18 +76,17 @@ data class Settings(
     val cardEnderecos: Boolean = true,
     val cardMeta: Boolean = true,
     val cardReler: Boolean = true,
-    /** Mostra a contagem regressiva da recusa no card. */
-    val cardContagem: Boolean = true,
 
     // --- Recusa automática (o X do card de ofertas) ---
 
     /**
-     * Aperta o X sozinho quando a corrida não bate os mínimos abaixo. Vem desligado
-     * de fábrica: recusar é decisão com dinheiro envolvido, então quem liga é o dono.
+     * Aperta o X sozinho quando a corrida está RUIM (abaixo da meta), depois da
+     * contagem regressiva que o motorista pode cancelar tocando no card. Vem ligada;
+     * o botão da tela principal e a opção do card desligam na hora.
      */
-    val recusaAtiva: Boolean = false,
+    val recusaAtiva: Boolean = true,
     /** Modo aviso: mostra a contagem e o motivo, mas NÃO clica no X. */
-    val recusaSoAviso: Boolean = true,
+    val recusaSoAviso: Boolean = false,
     /** Segundos entre o card aparecer e o X ser apertado (tempo para você ler). */
     val recusaSegundos: Int = 5,
     /** Corrida mais curta que isto (km no total) é recusada. 0 = não usa o critério. */
@@ -111,7 +110,7 @@ object Prefs {
     private const val FILE = "radar_prefs"
 
     /** Versão do arquivo de configurações: serve para trocar padrões já gravados. */
-    private const val VERSAO = 2
+    private const val VERSAO = 3
     private const val CHAVE_VERSAO = "prefsVersao"
 
     /** Padrões antigos, só para saber se o motorista nunca mexeu no campo. */
@@ -122,20 +121,29 @@ object Prefs {
         c.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
     /**
-     * Traz os padrões novos (leitura de 2 em 2 s e card no topo) para quem já tem o
-     * app instalado: mudar o padrão no código não muda nada em quem já tem valor
-     * gravado. Só troca o que ainda está no valor antigo de fábrica, para não apagar
-     * uma escolha do motorista — e roda uma vez só.
+     * Traz os padrões novos para quem já tem o app instalado: mudar o padrão no código
+     * não muda nada em quem já tem valor gravado. Só troca o que ainda está no valor
+     * antigo de fábrica, para não apagar uma escolha do motorista — e roda uma vez só.
      */
     private fun migrar(p: SharedPreferences) {
-        if (p.getInt(CHAVE_VERSAO, 1) >= VERSAO) return
+        val versao = p.getInt(CHAVE_VERSAO, 1)
+        if (versao >= VERSAO) return
         val padrao = Settings()
         val ed = p.edit()
-        if (p.getInt("autoIntervaloSeg", INTERVALO_ANTIGO) == INTERVALO_ANTIGO) {
-            ed.putInt("autoIntervaloSeg", padrao.autoIntervaloSeg)
+        if (versao < 2) {
+            if (p.getInt("autoIntervaloSeg", INTERVALO_ANTIGO) == INTERVALO_ANTIGO) {
+                ed.putInt("autoIntervaloSeg", padrao.autoIntervaloSeg)
+            }
+            if ((p.getString("cardGravity", POSICAO_ANTIGA) ?: POSICAO_ANTIGA) == POSICAO_ANTIGA) {
+                ed.putString("cardGravity", padrao.cardGravity)
+            }
         }
-        if ((p.getString("cardGravity", POSICAO_ANTIGA) ?: POSICAO_ANTIGA) == POSICAO_ANTIGA) {
-            ed.putString("cardGravity", padrao.cardGravity)
+        if (versao < 3) {
+            // 1.14: a recusa passa a clicar no X (o "só avisar" era o padrão antigo,
+            // e era por isso que a contagem chegava ao fim sem recusar) e vem ligada.
+            // A contagem regressiva é sempre mostrada, para dar tempo de cancelar.
+            ed.putBoolean("recusaAtiva", true)
+            ed.putBoolean("recusaSoAviso", false)
         }
         ed.putInt(CHAVE_VERSAO, VERSAO).apply()
     }
@@ -192,7 +200,6 @@ object Prefs {
             cardEnderecos = p.getBoolean("cardEnderecos", d.cardEnderecos),
             cardMeta = p.getBoolean("cardMeta", d.cardMeta),
             cardReler = p.getBoolean("cardReler", d.cardReler),
-            cardContagem = p.getBoolean("cardContagem", d.cardContagem),
             recusaAtiva = p.getBoolean("recusaAtiva", d.recusaAtiva),
             recusaSoAviso = p.getBoolean("recusaSoAviso", d.recusaSoAviso),
             recusaSegundos = p.getInt("recusaSegundos", d.recusaSegundos).coerceIn(1, 30),
@@ -240,7 +247,6 @@ object Prefs {
             .putBoolean("cardEnderecos", s.cardEnderecos)
             .putBoolean("cardMeta", s.cardMeta)
             .putBoolean("cardReler", s.cardReler)
-            .putBoolean("cardContagem", s.cardContagem)
             .putBoolean("recusaAtiva", s.recusaAtiva)
             .putBoolean("recusaSoAviso", s.recusaSoAviso)
             .putInt("recusaSegundos", s.recusaSegundos)

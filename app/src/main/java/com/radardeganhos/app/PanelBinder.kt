@@ -120,7 +120,7 @@ object PanelBinder {
         }
 
         // A contagem da recusa nasce escondida: quem escreve nela é o serviço, quando
-        // a oferta bate os critérios (e só se o motorista deixou mostrar no card).
+        // a oferta é RUIM (e o card fica na tela até a contagem acabar).
         v.findViewById<View>(R.id.tvContagem).visibility = View.GONE
 
         applyVisibility(v, s)

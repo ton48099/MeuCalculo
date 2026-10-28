@@ -71,11 +71,29 @@ object RideParser {
     private val noventaENove = Regex("""\b99\b""")
     private val simbolosPar = Regex("""[()\[\]·|]""")
 
+    /**
+     * O OCR às vezes separa os dígitos de um número: "1 9 min" em vez de "19 min",
+     * "7 1,7 km" em vez de "71,7 km". Sem juntar, "1 h e 1 9 min (71,7 km)" virava
+     * "9 min" — o motorista via 9 min numa corrida de 1 h e 19 min.
+     */
+    private val numeroQuebrado = Regex(
+        """(?<![\d.,])(\d)\s+(\d)(?=\s*(?:[.,]\s*\d+)?\s*(?:minutos?|horas?|min|km|m|h)\b)"""
+    )
+    private val separadorEspacado = Regex("""(\d)\s*([.,])\s*(\d)""")
+
     fun normalize(raw: String): String {
         var t = raw.lowercase()
             .replace('\u00A0', ' ')
             .replace('–', '-')
             .replace('—', '-')
+
+        // Junta dígitos que o OCR separou ("1 9 min", "7 1,7 km", "9 , 5 km").
+        var anterior: String
+        do {
+            anterior = t
+            t = t.replace(numeroQuebrado, "$1$2")
+        } while (t != anterior)
+        t = t.replace(separadorEspacado, "$1$2$3")
 
         // "1 h e 43 min" / "1 hora e 43 minutos" / "1h43" -> "1h43min"
         t = t.replace(normHm, "$1h$2min")
@@ -190,11 +208,18 @@ object RideParser {
             (it.groupValues[1].toDoubleOrNull() ?: 0.0) * 60 +
                 (it.groupValues[2].toDoubleOrNull() ?: 0.0)
         }
-        if (horasNoTexto != null && horasNoTexto > 0 && minVia > 0 && kmVia > 0 &&
-            kmVia / (minVia / 60.0) > 120.0 && horasNoTexto > minVia
-        ) {
-            minVia = horasNoTexto
-            avisos.add("Tempo da viagem recuperado do formato \"1 h e 19 min\"")
+        if (horasNoTexto != null && horasNoTexto > 0 && kmVia > 0) {
+            val velocidade = if (minVia > 0) kmVia / (minVia / 60.0) else 0.0
+            // A hora sumiu da conta (leu "9 min" de "1 h e 19 min") ou o tempo com a
+            // hora ainda dá uma velocidade impossível: em ambos os casos vale a hora
+            // escrita no card, que é o que o motorista está vendo. Só quando o par da
+            // viagem foi identificado (2 pares), senão o km seria o do deslocamento.
+            val perdeuAHora = pares.size >= 2 && horasNoTexto >= 60.0 && minVia < 60.0
+            val impossivel = velocidade > 120.0
+            if (minVia <= 0.0 || (horasNoTexto > minVia && (perdeuAHora || impossivel))) {
+                minVia = horasNoTexto
+                avisos.add("Tempo da viagem recuperado do formato \"1 h e 19 min\"")
+            }
         }
 
         // 4) Valor: o maior "R$" do card (o preço por km já foi removido).

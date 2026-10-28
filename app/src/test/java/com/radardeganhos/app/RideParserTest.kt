@@ -189,6 +189,26 @@ class RideParserTest {
             "R\$ 118,89 4 min (1.3 km) 1 h e 19 min 9 min (71.7 km)", "com.ubercab.driver"
         )!!
         assertEquals(79.0, ocrPerdeuAHora.minViagem, 0.01)
+
+        // O OCR separou os dígitos do "19": "1 h e 1 9 min". Antes o parser achava
+        // "9 min (71,7 km)" e o card mostrava 9 min numa viagem de 1 h e 19 min.
+        val digitosSeparados = RideParser.parse(
+            "R\$ 118,89 4 min (1.3 km) 1 h e 1 9 min (71.7 km)", "com.ubercab.driver"
+        )!!
+        assertEquals(79.0, digitosSeparados.minViagem, 0.01)
+        assertEquals(71.7, digitosSeparados.kmViagem, 0.01)
+
+        // Mesmo com um km pequeno (9,2 km), onde a velocidade não denuncia o erro.
+        val kmPequeno = RideParser.parse(
+            "R\$ 118,89 4 min (1.3 km) 1 h e 1 9 min (9.2 km)", "com.ubercab.driver"
+        )!!
+        assertEquals(79.0, kmPequeno.minViagem, 0.01)
+
+        // Por extenso, também com o número quebrado pelo OCR.
+        val porExtenso = RideParser.parse(
+            "R\$ 118,89 4 min (1.3 km) 1 hora e 1 9 minutos (71,7 km)", "com.ubercab.driver"
+        )!!
+        assertEquals(79.0, porExtenso.minViagem, 0.01)
     }
 
     @Test

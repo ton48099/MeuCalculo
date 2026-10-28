@@ -218,6 +218,16 @@ class OverlayController(
     }
 
     /**
+     * Mantém o card na tela pelo menos [segundos] — usado enquanto a recusa está
+     * contando. Sem isso, o fechamento automático (12 s por padrão) podia fechar o
+     * card antes do fim da contagem (até 30 s) e a recusa era cancelada sem o
+     * motorista ver o clique.
+     */
+    fun manterAberto(segundos: Int) {
+        cards.toList().forEach { agendaFechamento(it, segundos.coerceAtLeast(3)) }
+    }
+
+    /**
      * Aplica na hora as configurações no card que está na tela. Para tamanho da fonte,
      * posição e opacidade o card é redesenhado com a última leitura — era o que faltava
      * para a configuração valer na prática sem precisar ler de novo.

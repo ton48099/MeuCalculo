@@ -49,6 +49,15 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, CardConfigActivity::class.java))
         }
 
+        // Recusa automática: liga/desliga sem entrar nas configurações.
+        findViewById<TextView>(R.id.btnRecusa).setOnClickListener {
+            val s = Prefs.load(this)
+            val novo = s.copy(recusaAtiva = !s.recusaAtiva)
+            Prefs.save(this, novo)
+            RideAccessibilityService.instance?.applySettings(novo)
+            atualizarRecusa()
+        }
+
         // Bottom Navigation
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
         bottomNav.setOnItemSelectedListener { item ->
@@ -65,6 +74,18 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         atualizarBotao()
+        atualizarRecusa()
+    }
+
+    /** Mostra no botão da tela principal se a recusa automática está ligada. */
+    private fun atualizarRecusa() {
+        val btn = findViewById<TextView>(R.id.btnRecusa)
+        val s = Prefs.load(this)
+        btn.text = if (s.recusaAtiva) {
+            if (s.recusaSoAviso) "🚫 RECUSA SOZINHO: LIGADA (só avisando)" else "🚫 RECUSA SOZINHO: LIGADA"
+        } else {
+            "🚫 RECUSA SOZINHO: DESLIGADA"
+        }
     }
 
     private fun atualizarBotao() {

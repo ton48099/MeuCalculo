@@ -145,7 +145,12 @@ class RideAccessibilityService : AccessibilityService() {
             service = this,
             displayId = desejado,
             onAnalyze = { analyzeScreen(manual = true, tela = desejado) },
-            onPanelHide = { lastScanAt = SystemClock.elapsedRealtime() }
+            onPanelHide = {
+                lastScanAt = SystemClock.elapsedRealtime()
+                // Tocar no card da 2ª tela também cancela a recusa pendente. Sem isso
+                // a contagem continuava e o X era apertado depois de fechar o card.
+                cancelarRecusas()
+            }
         )
         if (novo.disponivel) {
             novo.showBubble()
@@ -430,6 +435,10 @@ class RideAccessibilityService : AccessibilityService() {
             forcar = true
         )
         mostrarContagem()
+        // O card não pode fechar antes da contagem (duração padrão 12 s, contagem até
+        // 30 s): segura ele aberto pelo tempo que falta + 2 s.
+        val falta = (recusas.minOf { it.fimEm } - agora).coerceAtLeast(0L)
+        destino?.manterAberto(((falta + 1999L) / 1000L).toInt())
         agendarTickRecusa()
     }
 
@@ -453,8 +462,10 @@ class RideAccessibilityService : AccessibilityService() {
                 val agora = SystemClock.elapsedRealtime()
                 val venceram = recusas.filter { agora >= it.fimEm }
                 recusas.removeAll(venceram)
-                venceram.forEach { dispararRecusa(it) }
                 mostrarContagem()
+                // Depois de mostrar a contagem que sobrou: a mensagem final ("RECUSADA"
+                // ou "MODO AVISO") fica no card em vez de ser apagada por ela.
+                venceram.forEach { dispararRecusa(it) }
                 if (recusas.isNotEmpty()) agendarTickRecusa()
             }
         }
@@ -1136,6 +1147,8 @@ class RideAccessibilityService : AccessibilityService() {
     fun applySettings(s: Settings) {
         overlay?.applySettings(s)
         overlayExterno?.applySettings(s)
+        // Desligar a recusa na tela de configurações cancela na hora a que está contando.
+        if (!s.recusaAtiva) cancelarRecusas()
         // Modo desktop pode ter sido ligado/desligado agora: recria o overlay externo.
         atualizarOverlayExterno()
     }

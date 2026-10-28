@@ -99,11 +99,14 @@ object Recusa {
     /**
      * Por que esta corrida deve ser recusada (vazio = aceita).
      *
+     * O critério principal é o que o motorista vê no card: **RUIM** (abaixo da meta)
+     * é recusado. Os mínimos numéricos continuam valendo como ajuste fino — é assim
+     * que se recusa uma MÉDIA, baixando o mínimo — e 0 desliga cada um deles.
+     *
      * Regras de segurança, antes de qualquer critério:
      *  - recusa desligada nas configurações → nunca recusa;
      *  - leitura incompleta (sem valor, km ou tempo) → nunca recusa: o app prefere
-     *    deixar passar a arriscar recusar uma oferta boa por erro de leitura;
-     *  - mínimo igual a 0 significa "não usa este critério".
+     *    deixar passar a arriscar recusar uma oferta boa por erro de leitura.
      */
     fun motivos(a: RideAnalysis, s: Settings): List<String> {
         if (!s.recusaAtiva) return emptyList()
@@ -111,6 +114,10 @@ object Recusa {
         if (card.valor <= 0.0 || card.kmTotal <= 0.05 || a.minTotal <= 0.0) return emptyList()
 
         val motivos = mutableListOf<String>()
+        // Mesmo julgamento que pinta o card: se está RUIM na tela, a recusa atende.
+        if (a.veredito == Veredito.RUIM) {
+            motivos.add("nota ${Math.round(a.score)}% (RUIM)")
+        }
         if (s.recusaMinKm > 0.0 && card.kmTotal < s.recusaMinKm) {
             motivos.add("${Report.km(card.kmTotal)} (mínimo ${Report.km(s.recusaMinKm)})")
         }

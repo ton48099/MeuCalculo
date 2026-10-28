@@ -57,7 +57,6 @@ class CardConfigActivity : AppCompatActivity() {
     // Recusa automática (o X)
     private lateinit var chkRecusa: CheckBox
     private lateinit var chkRecusaAviso: CheckBox
-    private lateinit var chkCardContagem: CheckBox
     private lateinit var etRecusaSegundos: EditText
     private lateinit var etRecusaMinKm: EditText
     private lateinit var etRecusaMinMin: EditText
@@ -127,7 +126,6 @@ class CardConfigActivity : AppCompatActivity() {
         chkReler = findViewById(R.id.chkReler)
         chkRecusa = findViewById(R.id.chkRecusa)
         chkRecusaAviso = findViewById(R.id.chkRecusaAviso)
-        chkCardContagem = findViewById(R.id.chkCardContagem)
         etRecusaSegundos = findViewById(R.id.etRecusaSegundos)
         etRecusaMinKm = findViewById(R.id.etRecusaMinKm)
         etRecusaMinMin = findViewById(R.id.etRecusaMinMin)
@@ -235,7 +233,7 @@ class CardConfigActivity : AppCompatActivity() {
         listOf(
             chkEmpilhar, chkValorKm, chkValorHora, chkValorMinuto, chkValoresTotais,
             chkVeredito, chkEnderecos, chkCustoTotal, chkLucro, chkMeta, chkTrajeto, chkReler,
-            chkRecusa, chkRecusaAviso, chkCardContagem
+            chkRecusa, chkRecusaAviso
         ).forEach { chk -> chk.setOnCheckedChangeListener { _, _ -> salvar() } }
 
         findViewById<TextView>(R.id.btnSalvar).setOnClickListener {
@@ -370,7 +368,6 @@ class CardConfigActivity : AppCompatActivity() {
 
         chkRecusa.isChecked = s.recusaAtiva
         chkRecusaAviso.isChecked = s.recusaSoAviso
-        chkCardContagem.isChecked = s.cardContagem
         etRecusaSegundos.setText(s.recusaSegundos.toString())
         etRecusaMinKm.setText(formatarNumero(s.recusaMinKm))
         etRecusaMinMin.setText(formatarNumero(s.recusaMinMin))
@@ -439,7 +436,6 @@ class CardConfigActivity : AppCompatActivity() {
         cardMeta = chkMeta.isChecked,
         cardTrajeto = chkTrajeto.isChecked,
         cardReler = chkReler.isChecked,
-        cardContagem = chkCardContagem.isChecked,
         recusaAtiva = chkRecusa.isChecked,
         recusaSoAviso = chkRecusaAviso.isChecked,
         recusaSegundos = (NumberParse.toDouble(etRecusaSegundos.text?.toString())?.toInt()

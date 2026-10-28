@@ -6,7 +6,7 @@ App Android que lê o card de corrida do **Uber** e da **99** em qualquer tela (
 
 ```
 pacote: com.radardeganhos.app
-versão: 1.13 (versionCode 14)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
+versão: 1.14 (versionCode 15)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
 ```
 
 O APK sai do próprio Android Studio (aba **Build › Build App Bundle(s) / APK(s) › Build APK(s)**)
@@ -27,7 +27,7 @@ Em `dist/` fica só o APK da versão atual; os anteriores continuam nas releases
 
 | Opção | Para quê |
 |---|---|
-| `-Versao 1.14` | escolhe o número (padrão: sobe o último, `1.13` → `1.14`) |
+| `-Versao 1.15` | escolhe o número (padrão: sobe o último, `1.14` → `1.15`) |
 | `-Notas "..."` ou `-NotasArquivo notas.md` | texto da release |
 | `-Simulacao` | mostra tudo sem build, commit ou envio |
 | `-SemBump` | publica a versão que já está no `build.gradle.kts`, sem somar 1 |
@@ -145,20 +145,23 @@ volta a ser a tela inteira em vez de ler uma faixa de 20 px.
 
 ## Recusar sozinho (o X)
 
-Quando a corrida não bate os mínimos configurados, o app **aperta o X do card** por você — no celular e na
-2ª tela (modo desktop). Vem **desligado de fábrica** e, quando ligado, começa em **“só avisar”**: mostra a
-contagem e o motivo, sem clicar. Recusar é decisão com dinheiro envolvido, então quem libera o clique é você.
+Quando a corrida é **RUIM** no card (abaixo da meta) ou não bate os mínimos configurados, o app **aperta o X
+do card** por você — no celular e na 2ª tela (modo desktop). Vem **ligado de fábrica**, já clicando: a
+contagem regressiva é a chance de cancelar. O botão **RECUSA SOZINHO** da tela principal liga e desliga a
+função inteira sem entrar nas configurações.
 
 Como funciona:
 
-1. a oferta é lida e calculada normalmente; se estiver dentro dos mínimos, nada acontece;
-2. se estiver fora, o card mostra a **contagem regressiva** (padrão **5 s**, de 1 a 30 — tempo de ler e conferir;
-   tocar no card cancela);
+1. a oferta é lida e calculada normalmente; se o veredito não for RUIM e estiver dentro dos mínimos, nada acontece;
+2. se for RUIM ou estiver fora dos mínimos, o card mostra a **contagem regressiva** (padrão **5 s**, de 1 a 30 —
+   tempo de ler e conferir) e fica aberto até ela acabar; **tocar no card cancela** a recusa daquela oferta;
 3. ao zerar, o app procura o X daquele app, **confere se a oferta ainda está na tela** (se você aceitou nesse
    meio-tempo, nada é clicado) e clica;
 4. a mesma oferta nunca é recusada duas vezes (2 minutos de memória, por segurança).
 
-Mínimos configuráveis — abaixo de qualquer um deles, recusa (0 desliga o critério):
+O critério principal é o veredito que você vê: **RUIM recusa**. Os mínimos numéricos continuam valendo como
+ajuste fino (servem, por exemplo, para recusar também uma MÉDIA) — abaixo de qualquer um deles, recusa
+(0 desliga o critério):
 
 | Critério | Padrão |
 |---|---|
@@ -176,7 +179,8 @@ na tela, o app guarda a impressão daquele botão por app; (2) descrição/id qu
 “decline”, “close”; (3) geometria (botão pequeno colado na borda de cima). Sem botão encontrado, **nada é
 clicado** e o diagnóstico diz o motivo.
 
-Por isso o primeiro teste é assim: ligue **Recusar sozinho**, deixe **Só avisar** ligado, veja o diagnóstico
+**Para testar sem risco**, toque em **RECUSA SOZINHO** na tela principal para desligar, ou marque **Só avisar**
+nas configurações: a contagem aparece e nada é clicado. Para conferir o X, ligue a leitura e veja o diagnóstico
 (“achei o X …”, “oferta conferida na tela”). Se o app não achar, recuse uma oferta à mão com o card na tela
 que ele aprende — o diagnóstico confirma o aprendizado. Depois desligue o “só avisar” para valer.
 
@@ -235,7 +239,7 @@ Requisitos: JDK 17, Android SDK 34 (o wrapper usa Gradle 9.6).
 
 ```bash
 ./gradlew :app:assembleRelease      # gera app/build/outputs/apk/release/app-release.apk
-./gradlew :app:testDebugUnitTest    # 98 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, recusa automática (critérios, escolha do X, contagem)
+./gradlew :app:testDebugUnitTest    # 99 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, recusa automática (critérios, veredito RUIM, escolha do X, contagem)
 ```
 
 Se o Android Studio estiver instalado, o JDK dele serve (`C:\Program Files\Android\Android Studio\jbr`);

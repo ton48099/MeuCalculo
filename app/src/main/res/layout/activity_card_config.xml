@@ -1242,7 +1242,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
                         android:buttonTint="@color/orange"
-                        android:text="Apertar o X quando a corrida não bater os mínimos abaixo"
+                        android:text="Apertar o X quando a corrida estiver RUIM (abaixo da meta) ou não bater os mínimos abaixo"
                         android:textColor="@color/text"
                         android:textSize="14sp" />
 
@@ -1256,21 +1256,11 @@
                         android:textColor="@color/text"
                         android:textSize="14sp" />
 
-                    <CheckBox
-                        android:id="@+id/chkCardContagem"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:buttonTint="@color/orange"
-                        android:text="Mostrar a contagem regressiva no card"
-                        android:textColor="@color/text"
-                        android:textSize="14sp" />
-
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Segundos antes de recusar (de 1 a 30; dá tempo de você olhar o card)"
+                        android:text="Segundos antes de recusar (de 1 a 30; a contagem aparece no card e tocar nele cancela)"
                         android:textColor="@color/textDim"
                         android:textSize="13sp" />
 
@@ -1396,7 +1386,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
-                        android:text="Recusar é decisão sua: por isso vem desligado, e ligado começa no modo aviso. Vale para o celular e para a 2ª tela (modo desktop)."
+                        android:text="A recusa vem ligada e clica no X ao fim da contagem. Tocar no card cancela a recusa daquela oferta; o botão RECUSA SOZINHO da tela principal desliga a função inteira. Vale para o celular e para a 2ª tela (modo desktop)."
                         android:textColor="@color/textDim"
                         android:textSize="12sp" />
                 </LinearLayout>
