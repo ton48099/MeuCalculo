@@ -6,7 +6,7 @@ App Android que lê o card de corrida do **Uber** e da **99** em qualquer tela (
 
 ```
 pacote: com.radardeganhos.app
-versão: 1.12 (versionCode 13)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
+versão: 1.13 (versionCode 14)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
 ```
 
 O APK sai do próprio Android Studio (aba **Build › Build App Bundle(s) / APK(s) › Build APK(s)**)
@@ -27,7 +27,7 @@ Em `dist/` fica só o APK da versão atual; os anteriores continuam nas releases
 
 | Opção | Para quê |
 |---|---|
-| `-Versao 1.13` | escolhe o número (padrão: sobe o último, `1.12` → `1.13`) |
+| `-Versao 1.14` | escolhe o número (padrão: sobe o último, `1.13` → `1.14`) |
 | `-Notas "..."` ou `-NotasArquivo notas.md` | texto da release |
 | `-Simulacao` | mostra tudo sem build, commit ou envio |
 | `-SemBump` | publica a versão que já está no `build.gradle.kts`, sem somar 1 |
