@@ -72,7 +72,11 @@ function ChamarApi {
     }
     $params = @{ Uri = $Url; Method = $Metodo; Headers = $h; TimeoutSec = $TempoLimite }
     if ($null -ne $Corpo) {
-        $params.Body = if ($Corpo -is [byte[]]) { $Corpo } else { [System.Text.Encoding]::UTF8.GetBytes($Corpo) }
+        # Bracos separados de proposito: `$params.Body = if (...)` embrulha o byte[]
+        # num objeto e o Invoke-RestMethod manda os bytes como texto ("123 13 10 ...",
+        # que o GitHub recusava com 422). Era o bug da release na 1.11 e na 1.12.
+        if ($Corpo -is [byte[]]) { $params.Body = $Corpo }
+        else { $params.Body = [System.Text.Encoding]::UTF8.GetBytes([string]$Corpo) }
         $params.ContentType = $TipoConteudo
     }
     return Invoke-RestMethod @params
