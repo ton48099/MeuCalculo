@@ -236,6 +236,16 @@ $corpo = @{
     prerelease       = $false
 } | ConvertTo-Json -Depth 3
 
+# Depuracao: PUBLICAR_DEBUG=1 grava o JSON enviado, para conferir o corpo da release.
+if ($env:PUBLICAR_DEBUG) {
+    [System.IO.File]::WriteAllText(
+        (Join-Path $raiz "debug-release.json"),
+        $corpo,
+        (New-Object System.Text.UTF8Encoding($false))
+    )
+    Ok "corpo da release gravado em debug-release.json ($($corpo.Length) caracteres)"
+}
+
 try {
     $release = ChamarApi -Metodo Post -Url "https://api.github.com/repos/$repositorio/releases" -Token $token -Corpo $corpo
 } catch {
