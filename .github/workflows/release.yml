@@ -1,0 +1,81 @@
+name: Release do APK
+
+# Publica a release da versão que está no app/build.gradle.kts quando a branch
+# `release` recebe um push (ou pelo botão "Run workflow").
+#
+# Por que existe: o publicar.cmd precisa do token do GitHub que fica na máquina do
+# motorista. Este workflow faz o mesmo usando o GITHUB_TOKEN automático do Actions,
+# então dá para publicar de qualquer lugar (inclusive da nuvem).
+#
+# Se a tag da versão já existir (release já publicada pelo publicar.cmd), ele não faz
+# nada — não gera release duplicada nem entra no caminho do script.
+
+on:
+  push:
+    branches: [release]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ler a versao do projeto
+        id: v
+        run: |
+          V=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          if [ -z "$V" ]; then
+            echo "versionName nao encontrado em app/build.gradle.kts"
+            exit 1
+          fi
+          echo "versao=$V" >> "$GITHUB_OUTPUT"
+          echo "tag=v$V" >> "$GITHUB_OUTPUT"
+          echo "versao lida: $V"
+
+      - name: A tag da versao ja existe?
+        id: tag
+        run: |
+          if git ls-remote --tags origin "refs/tags/${{ steps.v.outputs.tag }}" | grep -q .; then
+            echo "existe=1" >> "$GITHUB_OUTPUT"
+            echo "a tag ${{ steps.v.outputs.tag }} ja existe: nada a publicar"
+          else
+            echo "existe=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: JDK 17
+        if: steps.tag.outputs.existe == '0'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Compilar o APK assinado
+        if: steps.tag.outputs.existe == '0'
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --console=plain
+
+      - name: Criar a release com o APK
+        if: steps.tag.outputs.existe == '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.v.outputs.tag }}
+          VERSAO: ${{ steps.v.outputs.versao }}
+        run: |
+          APK="RadarDeGanhos-$VERSAO.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$APK"
+          git log -1 --pretty=%b > notas.md
+          if [ ! -s notas.md ]; then
+            echo "**APK $VERSAO** - assinado com o mesmo keystore. Baixe o arquivo abaixo." > notas.md
+          fi
+          gh release create "$TAG" "$APK" \
+            --target "$GITHUB_SHA" \
+            --title "Versao $VERSAO" \
+            --notes-file notas.md
+          echo "release $TAG publicada com $APK"
