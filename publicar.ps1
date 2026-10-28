@@ -219,11 +219,11 @@ Ok "tag enviada"
 # ---------- 7. release ----------
 Passo "Criando a release no GitHub"
 $token = TokenGitHub -Git $git
-$sha = (& $git rev-parse HEAD).Trim()
 
 $corpo = @{
     tag_name         = $tag
-    target_commitish = $sha
+    # A branch, e nao o SHA: com SHA o GitHub devolve 422 quando a tag ja existe.
+    target_commitish = $branch
     name             = if ($Resumo) { "Versao $Versao - $Resumo" } else { "Versao $Versao" }
     body             = $Notas
     draft            = $false
