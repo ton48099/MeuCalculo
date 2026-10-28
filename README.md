@@ -6,7 +6,7 @@ App Android que lê o card de corrida do **Uber** e da **99** em qualquer tela (
 
 ```
 pacote: com.radardeganhos.app
-versão: 1.16 (versionCode 17)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
+versão: 1.17 (versionCode 18)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
 ```
 
 O APK sai do próprio Android Studio (aba **Build › Build App Bundle(s) / APK(s) › Build APK(s)**)
@@ -231,6 +231,10 @@ Os cards são lidos com regras próprias para os dois formatos que aparecem nas 
 - Uber: `R$11.65`, `R$2.24/km est.`, `2 min (0.3 km) de distância`, `Viagem de 12 min (4.9 km)`, `1 h e 43 min (95,7 km)`
 - 99: `R$54,89`, `R$2,20 por km`, `5Min (2,5km)`, `32Min (6,3km)`, `Dinheiro`, `Taxa de deslocamento`
 
+Corrida longa: `1 h e 19 min (71,7 km)` vira 79 min, inclusive quando o OCR troca o `1` por
+`l`/`I` (`lh e 19 min`), come o `min` (`1h19 (71,7 km)`) ou separa os dígitos (`1 h e 1 9 min`).
+Se o OCR inverter a ordem e a viagem longa vier antes do deslocamento, o app troca as duas.
+
 O valor é sempre o **primeiro R$ do card** (o do topo), nunca o maior da tela: a 99 mostra ofertas
 alternativas embaixo (`R$10,73  R$11,24  R$11,75`) e o maior delas tomava o lugar do valor real. O app
 também é identificado pelo pacote, então o **99 Motorista** (`com.app99.driver`) aparece como `99` — antes
@@ -248,7 +252,7 @@ Requisitos: JDK 17, Android SDK 34 (o wrapper usa Gradle 9.6).
 
 ```bash
 ./gradlew :app:assembleRelease      # gera app/build/outputs/apk/release/app-release.apk
-./gradlew :app:testDebugUnitTest    # 109 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, recusa automática (só veredito RUIM de fábrica, critérios opcionais, escolha do X, contagem, X ensinado à mão por tela), valor do topo do card e 99 Motorista identificada pelo pacote
+./gradlew :app:testDebugUnitTest    # 112 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, recusa automática (só veredito RUIM de fábrica, critérios opcionais, escolha do X, contagem, X ensinado à mão por tela), valor do topo do card e 99 Motorista identificada pelo pacote
 ```
 
 Se o Android Studio estiver instalado, o JDK dele serve (`C:\Program Files\Android\Android Studio\jbr`);

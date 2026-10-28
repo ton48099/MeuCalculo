@@ -43,6 +43,9 @@ object RideParser {
 
     private val pairHM = Regex("""(\d+)\s*h\s*(?:e\s*)?(\d{1,2})\s*min\s*[\(\[]?\s*(\d+(?:[.,]\d+)?)\s*km""")
     private val pairH = Regex("""(\d+)\s*h\s*[\(\[]?\s*(\d+(?:[.,]\d+)?)\s*km""")
+
+    /** "1h19 (71,7 km)": o app escreve "min", mas o OCR pode comer a palavra. */
+    private val pairHMinSemMin = Regex("""(\d+)\s*h\s*(\d{1,2})\s*[\(\[]?\s*(\d+(?:[.,]\d+)?)\s*km""")
     private val pairMin = Regex("""(\d+)\s*min\s*\(?\s*(\d+(?:[.,]\d+)?)\s*km""")
     private val pairMinMeters = Regex("""(\d+)\s*min\s*\(?\s*(\d{2,5})\s*m\b""")
     private val pairKmMin = Regex("""(\d+(?:[.,]\d+)?)\s*km[^0-9]{0,12}?(\d+)\s*min""")
@@ -76,6 +79,14 @@ object RideParser {
      * "7 1,7 km" em vez de "71,7 km". Sem juntar, "1 h e 1 9 min (71,7 km)" virava
      * "9 min" — o motorista via 9 min numa corrida de 1 h e 19 min.
      */
+    /**
+     * O OCR troca o "1" por "l", "I" ou "|": "1 h e 19 min" sai como "lh e 19 min"
+     * e o parser entendia só "19 min" — o motorista via 19 min numa corrida de 1h19.
+     */
+    private val lNoLugarDoUm = Regex("""(?<=[\s(])[li](?=\s*(?:\d|h\b|min\b|km\b))""")
+    private val lEntreDigitos = Regex("""(?<=\d)[li](?=[.,]?\d)""")
+    private val oNoLugarDoZero = Regex("""(?<=[\s(])o(?=\s*\d)""")
+
     private val numeroQuebrado = Regex(
         """(?<![\d.,])(\d)\s+(\d)(?=\s*(?:[.,]\s*\d+)?\s*(?:minutos?|horas?|min|km|m|h)\b)"""
     )
@@ -86,6 +97,11 @@ object RideParser {
             .replace('\u00A0', ' ')
             .replace('–', '-')
             .replace('—', '-')
+
+        // "1" lido como letra: "lh e 19 min", "l9 min", "7l,7 km", "1h 3o min".
+        t = t.replace(lNoLugarDoUm, "1")
+        t = t.replace(lEntreDigitos, "1")
+        t = t.replace(oNoLugarDoZero, "0")
 
         // Junta dígitos que o OCR separou ("1 9 min", "7 1,7 km", "9 , 5 km").
         var anterior: String
@@ -208,6 +224,13 @@ object RideParser {
                 }
                 avisos.add("Card lido sem o padrão completo (tempo/distância)")
             }
+        }
+
+        // O card mostra o deslocamento primeiro e a viagem depois. Se o OCR inverteu
+        // a ordem (a viagem longa veio em cima), o tempo grande é o da viagem.
+        if (minDes >= 60.0 && minVia < 60.0 && kmDes > 0.0) {
+            val kmTmp = kmDes; kmDes = kmVia; kmVia = kmTmp
+            val minTmp = minDes; minDes = minVia; minVia = minTmp
         }
 
         // O Uber escreve "1 h e 19 min (71,7 km)". Quando o OCR perde o "1h" e sobra
@@ -511,6 +534,12 @@ object RideParser {
             val h = m.groupValues[1].toDoubleOrNull() ?: 0.0
             val km = NumberParse.toDouble(m.groupValues[2]) ?: return@forEach
             add(m.range.first, h * 60, km)
+        }
+        pairHMinSemMin.findAll(text).forEach { m ->
+            val h = m.groupValues[1].toDoubleOrNull() ?: 0.0
+            val mi = m.groupValues[2].toDoubleOrNull() ?: 0.0
+            val km = NumberParse.toDouble(m.groupValues[3]) ?: return@forEach
+            add(m.range.first, h * 60 + mi, km)
         }
         pairMin.findAll(text).forEach { m ->
             val mi = m.groupValues[1].toDoubleOrNull() ?: 0.0

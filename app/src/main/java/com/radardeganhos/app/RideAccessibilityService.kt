@@ -416,10 +416,35 @@ class RideAccessibilityService : AccessibilityService() {
         // Agora a oferta que já está agendada mantém o tempo que falta.
         val novas = mutableListOf<RecusaPendente>()
         analises.forEachIndexed { i, a ->
+            val lido = lidos.getOrNull(i)
+            val quem = lido?.pkg?.let { appCurto(it) } ?: a.card.app ?: "oferta"
             val motivos = Recusa.motivos(a, s)
-            if (motivos.isEmpty()) return@forEachIndexed
-            val lido = lidos.getOrNull(i) ?: return@forEachIndexed
-            val pkg = lido.pkg?.takeIf { AutoScanPolicy.isRideApp(it) } ?: return@forEachIndexed
+            if (motivos.isEmpty()) {
+                // Sem esta linha, "a recusa parou de funcionar" não tem resposta no
+                // diagnóstico: aqui aparece se a recusa está desligada ou se a oferta
+                // simplesmente passou (BOA/MÉDIA não são recusadas de fábrica).
+                AutoDiag.anotar(
+                    this,
+                    if (!s.recusaAtiva) {
+                        "recusa desligada — $quem ${Report.money(a.bruto)} não é recusada"
+                    } else {
+                        "$quem ${Report.money(a.bruto)} · nota ${Math.round(a.score)}% " +
+                            "(${a.veredito.label}) — passa, não recuso"
+                    }
+                )
+                return@forEachIndexed
+            }
+            if (lido == null) return@forEachIndexed
+            val pkg = lido.pkg?.takeIf { AutoScanPolicy.isRideApp(it) }
+            if (pkg == null) {
+                // Sem saber de qual app é a oferta não dá para apertar o X certo.
+                AutoDiag.anotar(
+                    this,
+                    "oferta ${Report.money(a.bruto)} sem app identificado — não recuso",
+                    forcar = true
+                )
+                return@forEachIndexed
+            }
             val assinatura = cardSignature(a.card)
             if (recusadas.containsKey(assinatura)) return@forEachIndexed
 

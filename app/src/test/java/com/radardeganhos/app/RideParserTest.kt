@@ -338,4 +338,55 @@ class RideParserTest {
         assertEquals(1.42, c.precoPorKmApp ?: 0.0, 0.001)
         assertEquals(1.42, c.valor / c.kmTotal, 0.01)
     }
+
+    // ---- corrida longa (1 h e 19 min): as capturas de 28/10 --------------
+
+    /** O card completo da foto: R$ 118,89, 4 min (1.3 km) e 1 h e 19 min (71.7 km). */
+    @Test
+    fun leCorridaLongaDeUmaHoraDaCaptura() {
+        val c = RideParser.parse(
+            """
+            UberX Exclusivo
+            R${'$'} 118,89
+            Est. de R${'$'}1,63/km
+            ★ 4,92 (229)
+            +10% de ganhos Uber Pro
+            4 min (1.3 km)
+            Rua José Rodrigues, Cachoeirinha, Cachoeirinha
+            1 h e 19 min (71.7 km)
+            Rua Luiz Volkart, 478, Centro, Três Coroas
+            Viagem longa (mais de 30 min)
+            Aceitar
+            """.trimIndent(),
+            "com.ubercab.driver"
+        )!!
+        assertEquals("Uber", c.app)
+        assertEquals(118.89, c.valor, 0.001)
+        assertEquals(1.3, c.kmDeslocamento, 0.001)
+        assertEquals(4.0, c.minDeslocamento, 0.001)
+        assertEquals(71.7, c.kmViagem, 0.001)
+        assertEquals(79.0, c.minViagem, 0.001)
+        assertEquals(73.0, c.kmTotal, 0.001)
+        assertEquals(83.0, c.minTotal, 0.001)
+    }
+
+    /** OCR troca o "1" por "l" ("lh e 19 min", "7l,7 km") — a hora não pode sumir. */
+    @Test
+    fun leHoraComLNoLugarDoUm() {
+        val c = RideParser.parse(
+            "R\$ 118,89 4 min (1.3 km) lh e 19 min (7l,7 km)", "com.ubercab.driver"
+        )!!
+        assertEquals(79.0, c.minViagem, 0.01)
+        assertEquals(71.7, c.kmViagem, 0.01)
+    }
+
+    /** "1h19 (71,7 km)": o OCR comeu o "min" depois do número. */
+    @Test
+    fun leHoraSemAMinhaSeparada() {
+        val c = RideParser.parse(
+            "R\$ 118,89 4 min (1.3 km) 1h19 (71,7 km)", "com.ubercab.driver"
+        )!!
+        assertEquals(79.0, c.minViagem, 0.01)
+        assertEquals(71.7, c.kmViagem, 0.01)
+    }
 }
