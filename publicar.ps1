@@ -239,7 +239,9 @@ $corpo = @{
 try {
     $release = ChamarApi -Metodo Post -Url "https://api.github.com/repos/$repositorio/releases" -Token $token -Corpo $corpo
 } catch {
-    throw "O commit e a tag foram enviados, mas a release falhou: $($_.Exception.Message)"
+    $detalhe = ""
+    if ($_.ErrorDetails -and $_.ErrorDetails.Message) { $detalhe = "`n" + $_.ErrorDetails.Message }
+    throw "O commit e a tag foram enviados, mas a release falhou: $($_.Exception.Message)$detalhe"
 }
 Ok "release criada (id $($release.id))"
 
