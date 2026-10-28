@@ -67,6 +67,23 @@ class DesktopLadoALadoTest {
     }
 
     @Test
+    fun janelaQuePassaUmPixelDaBordaEhCortadaEmVezDePerderOsDoisCards() {
+        // No modo desktop a janela às vezes termina 1 px depois da captura (barra do
+        // sistema/arredondamento). Antes o recorte inteiro era descartado e os dois
+        // apps viravam uma leitura só; agora o excedente é cortado.
+        val esquerda = Rect(0, 0, 1200, 1081)
+        val direita = Rect(1200, 0, 2401, 1081)
+        val recortes = Recortes.dividir(telaL, telaA, telaL, telaA, listOf(esquerda, direita))
+        assertEquals(2, recortes.size)
+        assertEquals(Rect(0, 0, 1200, 1080), recortes[0])
+        assertEquals(Rect(1200, 0, 2400, 1080), recortes[1])
+
+        // Janela que começa fora da tela também é presa na borda.
+        val fora = Recortes.paraCaptura(Rect(-2, -3, 100, 200), 100, 200, 100, 200)
+        assertEquals(Rect(0, 0, 100, 200), fora)
+    }
+
+    @Test
     fun dimensoesImpossiveisDevolvemVazio() {
         assertNull(Recortes.paraCaptura(Rect(0, 0, 100, 100), 0, 100, 100, 100))
         assertNull(Recortes.paraCaptura(Rect(0, 0, 100, 100), 100, 100, 0, 100))

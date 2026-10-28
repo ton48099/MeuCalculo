@@ -212,6 +212,31 @@ class RideParserTest {
     }
 
     @Test
+    fun minutosQuebradosPeloOcrNaoPerdemODigito() {
+        // Card real do Uber de R$ 10,08: "18 min (4,2 km)" saiu do OCR como
+        // "1 8 min" e o card mostrava 8 min. O dígito separado tem de voltar a 18.
+        val dezoito = RideParser.parse(
+            "R\$ 10,08 2 min (0.5 km) 1 8 min (4.2 km)", "com.ubercab.driver"
+        )!!
+        assertEquals(18.0, dezoito.minViagem, 0.01)
+        assertEquals(4.2, dezoito.kmViagem, 0.01)
+        assertEquals(20.0, dezoito.minTotal, 0.01)
+
+        // Por extenso: "18 minutos" lido como "1 8 minutos".
+        val porExtenso = RideParser.parse(
+            "R\$ 10,08 2 min (0.5 km) 1 8 minutos (4.2 km)", "com.ubercab.driver"
+        )!!
+        assertEquals(18.0, porExtenso.minViagem, 0.01)
+
+        // "22 min" quebrado em "2 2 min" também não pode virar 2 min.
+        val vinteDois = RideParser.parse(
+            "R\$ 10,08 2 min (0.5 km) 2 2 min (7.4 km)", "com.ubercab.driver"
+        )!!
+        assertEquals(22.0, vinteDois.minViagem, 0.01)
+        assertEquals(7.4, vinteDois.kmViagem, 0.01)
+    }
+
+    @Test
     fun numerosBrasileiros() {
         assertEquals(1234.56, NumberParse.toDouble("1.234,56") ?: 0.0, 0.001)
         assertEquals(11.65, NumberParse.toDouble("11.65") ?: 0.0, 0.001)

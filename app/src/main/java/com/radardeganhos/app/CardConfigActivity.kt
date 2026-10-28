@@ -41,6 +41,7 @@ class CardConfigActivity : AppCompatActivity() {
     private lateinit var btnFontePequena: android.widget.LinearLayout
     private lateinit var btnFonteMedia: android.widget.LinearLayout
     private lateinit var btnFonteGrande: android.widget.LinearLayout
+    private lateinit var btnFonteExtra: android.widget.LinearLayout
     private lateinit var chkEmpilhar: CheckBox
     private lateinit var chkValorKm: CheckBox
     private lateinit var chkValorHora: CheckBox
@@ -112,6 +113,7 @@ class CardConfigActivity : AppCompatActivity() {
         btnFontePequena = findViewById(R.id.btnFontePequena)
         btnFonteMedia = findViewById(R.id.btnFonteMedia)
         btnFonteGrande = findViewById(R.id.btnFonteGrande)
+        btnFonteExtra = findViewById(R.id.btnFonteExtra)
         chkEmpilhar = findViewById(R.id.chkEmpilhar)
         chkValorKm = findViewById(R.id.chkValorKm)
         chkValorHora = findViewById(R.id.chkValorHora)
@@ -159,6 +161,7 @@ class CardConfigActivity : AppCompatActivity() {
         btnFontePequena.setOnClickListener { selecionarFonte("pequena") }
         btnFonteMedia.setOnClickListener { selecionarFonte("media") }
         btnFonteGrande.setOnClickListener { selecionarFonte("grande") }
+        btnFonteExtra.setOnClickListener { selecionarFonte("extra") }
 
         // Posição do card na tela
         btnPosTopoEsquerda.setOnClickListener { selecionarPosicao("topo-esquerda") }
@@ -311,6 +314,7 @@ class CardConfigActivity : AppCompatActivity() {
         aplicarCorFonte(btnFontePequena, tipo == "pequena")
         aplicarCorFonte(btnFonteMedia, tipo == "media")
         aplicarCorFonte(btnFonteGrande, tipo == "grande")
+        aplicarCorFonte(btnFonteExtra, tipo == "extra")
         salvar()
     }
 
@@ -349,7 +353,7 @@ class CardConfigActivity : AppCompatActivity() {
         seekOpacidade.progress = s.cardOpacidade.coerceIn(0, 100)
 
         tamanhoFonteSelecionado = when (s.cardTamanhoFonte) {
-            "pequena", "media", "grande" -> s.cardTamanhoFonte
+            "pequena", "media", "grande", "extra" -> s.cardTamanhoFonte
             else -> "media"
         }
         selecionarFonte(tamanhoFonteSelecionado)

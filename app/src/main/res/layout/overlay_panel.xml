@@ -269,4 +269,18 @@
         android:textColor="@color/text"
         android:textSize="12sp"
         android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/btnCalibrarX"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
+        android:background="@drawable/bg_field"
+        android:gravity="center"
+        android:paddingTop="9dp"
+        android:paddingBottom="9dp"
+        android:text="🎯 Ensinar onde fica o X"
+        android:textColor="@color/textDim"
+        android:textSize="12sp"
+        android:textStyle="bold" />
 </LinearLayout>

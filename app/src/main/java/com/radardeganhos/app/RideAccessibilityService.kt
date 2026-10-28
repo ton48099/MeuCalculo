@@ -2,8 +2,10 @@ package com.radardeganhos.app
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.accessibilityservice.GestureDescription
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Path
 import android.graphics.Rect
 import android.hardware.display.DisplayManager
 import android.os.Build
@@ -74,6 +76,13 @@ class RideAccessibilityService : AccessibilityService() {
     /** Overlay da tela externa: é ele que leva o botão R$ e o card para a 2ª tela. */
     private var overlayExterno: OverlayController? = null
 
+    /** Mira de calibração aberta: a leitura automática fica pausada enquanto ela está na tela. */
+    @Volatile
+    private var calibrando = false
+
+    /** Espera de 5 s para o motorista abrir o Uber/99 antes da mira do celular aparecer. */
+    private var calibracaoPendente: Runnable? = null
+
     /** Cache da varredura das telas externas (varrer janelas a cada tique custa caro). */
     private var conferiuExternaEm = 0L
     private var cacheExterno: Pair<String, Int>? = null
@@ -110,9 +119,16 @@ class RideAccessibilityService : AccessibilityService() {
                 // Card sumiu: o intervalo entre leituras volta a contar daqui.
                 onPanelHide = {
                     lastScanAt = SystemClock.elapsedRealtime()
-                    // Card fechado (no toque ou no tempo): a recusa agendada morre com ele.
-                    cancelarRecusas()
-                }
+                },
+                onCalibrarX = { pkg, app, tela, janela ->
+                    iniciarCalibracaoX(pkg, app, externo = false, janela = janela)
+                },
+                // Fechar o card do Uber não pode cancelar a recusa da 99 (e vice-versa).
+                onCardFechado = { assinatura -> cancelarRecusa(assinatura) },
+                onSalvarCalibracao = { pkg, app, relX, relY, tela ->
+                    salvarCalibracaoX(pkg, app, relX, relY, externo = false)
+                },
+                onCalibracaoFechada = { calibrando = false; lastScanAt = SystemClock.elapsedRealtime() }
             )
         }
         overlay?.showBubble()
@@ -147,10 +163,15 @@ class RideAccessibilityService : AccessibilityService() {
             onAnalyze = { analyzeScreen(manual = true, tela = desejado) },
             onPanelHide = {
                 lastScanAt = SystemClock.elapsedRealtime()
-                // Tocar no card da 2ª tela também cancela a recusa pendente. Sem isso
-                // a contagem continuava e o X era apertado depois de fechar o card.
-                cancelarRecusas()
-            }
+            },
+            onCalibrarX = { pkg, app, _, janela ->
+                iniciarCalibracaoX(pkg, app, externo = true, janela = janela)
+            },
+            onCardFechado = { assinatura -> cancelarRecusa(assinatura) },
+            onSalvarCalibracao = { pkg, app, relX, relY, _ ->
+                salvarCalibracaoX(pkg, app, relX, relY, externo = true)
+            },
+            onCalibracaoFechada = { calibrando = false; lastScanAt = SystemClock.elapsedRealtime() }
         )
         if (novo.disponivel) {
             novo.showBubble()
@@ -345,7 +366,9 @@ class RideAccessibilityService : AccessibilityService() {
         val km: Double,
         val aviso: Boolean,
         val fimEm: Long,
-        val overlay: OverlayController?
+        val overlay: OverlayController?,
+        /** Janela do app de onde a oferta foi lida: âncora do X ensinado à mão. */
+        val janela: Rect? = null
     ) {
         fun restantes(agora: Long): Int =
             ((fimEm - agora + 999L) / 1000L).toInt().coerceAtLeast(0)
@@ -364,7 +387,6 @@ class RideAccessibilityService : AccessibilityService() {
 
     private val recusas = mutableListOf<RecusaPendente>()
     private var tickRecusa: Runnable? = null
-    private var overlayDaRecusa: OverlayController? = null
 
     /** Ofertas recusadas há pouco: a mesma oferta não é recusada duas vezes. */
     private val recusadas = mutableMapOf<String, Long>()
@@ -376,7 +398,7 @@ class RideAccessibilityService : AccessibilityService() {
      */
     private fun agendarRecusas(
         analises: List<RideAnalysis>,
-        pacotes: List<String?>,
+        lidos: List<CardLido>,
         s: Settings,
         destino: OverlayController?,
         displayId: Int
@@ -396,14 +418,18 @@ class RideAccessibilityService : AccessibilityService() {
         analises.forEachIndexed { i, a ->
             val motivos = Recusa.motivos(a, s)
             if (motivos.isEmpty()) return@forEachIndexed
-            val pkg = pacotes.getOrNull(i)?.takeIf { AutoScanPolicy.isRideApp(it) }
-                ?: return@forEachIndexed
+            val lido = lidos.getOrNull(i) ?: return@forEachIndexed
+            val pkg = lido.pkg?.takeIf { AutoScanPolicy.isRideApp(it) } ?: return@forEachIndexed
             val assinatura = cardSignature(a.card)
             if (recusadas.containsKey(assinatura)) return@forEachIndexed
 
             val jaCorrendo = recusas.firstOrNull { mesmaOferta(it, pkg, a.card) }
             novas.add(
-                jaCorrendo?.copy(overlay = destino ?: jaCorrendo.overlay)
+                jaCorrendo?.copy(
+                    overlay = destino ?: jaCorrendo.overlay,
+                    displayId = displayId,
+                    janela = lido.janela ?: jaCorrendo.janela
+                )
                     ?: RecusaPendente(
                         pkg = pkg,
                         displayId = displayId,
@@ -413,22 +439,25 @@ class RideAccessibilityService : AccessibilityService() {
                         km = a.card.kmTotal,
                         aviso = s.recusaSoAviso,
                         fimEm = agora + s.recusaSegundos * 1000L,
-                        overlay = destino
+                        overlay = destino,
+                        janela = lido.janela
                     )
             )
         }
         // Oferta que saiu da tela leva a contagem dela embora.
+        val anteriores = recusas.map { it.assinatura }.toSet()
         recusas.clear()
         recusas.addAll(novas)
+        val atuais = novas.map { it.assinatura }.toSet()
+        (anteriores - atuais).forEach { assinatura ->
+            overlay?.atualizarContagem(null, assinatura)
+            overlayExterno?.atualizarContagem(null, assinatura)
+        }
         if (recusas.isEmpty()) {
-            tickRecusa?.let { handler.removeCallbacks(it) }
-            tickRecusa = null
-            overlayDaRecusa?.atualizarContagem(null)
-            overlayDaRecusa = null
+            cancelarRecusas()
             return
         }
 
-        if (destino != null) overlayDaRecusa = destino
         AutoDiag.anotar(
             this,
             "${if (s.recusaSoAviso) "aviso" else "recusa"} em ${s.recusaSegundos}s · ${recusas.first().motivos}",
@@ -473,24 +502,92 @@ class RideAccessibilityService : AccessibilityService() {
         handler.postDelayed(tick, 250L)
     }
 
-    /** Escreve (ou apaga) a linha da contagem no card. */
+    /** Escreve a linha da contagem em cada card, pela oferta de cada um. */
     private fun mostrarContagem() {
-        val pendente = recusas.minByOrNull { it.fimEm }
-        val alvo = pendente?.overlay ?: overlayDaRecusa ?: return
-        val texto = if (pendente == null) {
-            null
-        } else {
-            val faltam = pendente.restantes(SystemClock.elapsedRealtime())
-            val inicio = if (pendente.aviso) "🚫 RECUSARIA em ${faltam}s (só aviso)" else "🚫 RECUSANDO em ${faltam}s"
-            "$inicio · ${pendente.motivos} · toque no card para cancelar"
+        // Cada card tem a sua contagem: com duas ofertas na tela, um card não apaga a
+        // linha do outro. Quem apaga é o cancelamento da oferta (ou a leitura nova).
+        if (recusas.isEmpty()) return
+        val agora = SystemClock.elapsedRealtime()
+        recusas.forEach { pendente ->
+            val faltam = pendente.restantes(agora)
+            val inicio = if (pendente.aviso) {
+                "🚫 RECUSARIA em ${faltam}s (só aviso)"
+            } else {
+                "🚫 RECUSANDO em ${faltam}s"
+            }
+            pendente.overlay?.atualizarContagem(
+                "$inicio · ${pendente.motivos} · toque no card para cancelar",
+                pendente.assinatura
+            )
         }
-        alvo.atualizarContagem(texto)
-        if (texto == null) overlayDaRecusa = null
+    }
+
+    /** Uma oferta saiu da tela / o card dela fechou: cancela só a recusa dela. */
+    private fun cancelarRecusa(assinatura: String) {
+        val removeu = recusas.removeAll { it.assinatura == assinatura }
+        if (!removeu) return
+        overlay?.atualizarContagem(null, assinatura)
+        overlayExterno?.atualizarContagem(null, assinatura)
+        if (recusas.isEmpty()) {
+            tickRecusa?.let { handler.removeCallbacks(it) }
+            tickRecusa = null
+        } else {
+            mostrarContagem()
+        }
     }
 
     /** Chegou a hora: acha o X daquele app e clica (ou só avisa, no modo aviso). */
     private fun dispararRecusa(p: RecusaPendente) {
         recusadas[p.assinatura] = SystemClock.elapsedRealtime()
+        val externo = p.displayId != MultiTela.TELA_PRINCIPAL
+        val ensinado = Prefs.xAprendido(this, p.pkg, externo)
+
+        // X ensinado arrastando a mira: clica na coordenada, sem depender de o app
+        // expor o botão na árvore de acessibilidade (Uber/99 muitas vezes não expõem).
+        if (ensinado?.manual == true) {
+            val janela = limitesDaJanela(p.displayId, p.pkg) ?: p.janela
+            val raiz = runCatching { janelaDoApp(p.displayId, p.pkg)?.root }.getOrNull()
+            val confirmado = raiz?.let { ofertaAindaNaTela(it, p.valor) }
+
+            if (p.aviso) {
+                val onde = if (janela != null) {
+                    val (x, y) = ensinado.pontoEm(janela)
+                    "X ensinado em x=$x y=$y"
+                } else {
+                    "X ensinado (janela não encontrada)"
+                }
+                AutoDiag.anotar(this, "aviso: recusaria · $onde", forcar = true)
+                p.overlay?.atualizarContagem("🚫 MODO AVISO · $onde · não cliquei", p.assinatura)
+                return
+            }
+            if (confirmado == false) {
+                AutoDiag.anotar(
+                    this,
+                    "não recusei: a oferta de ${Report.money(p.valor)} não está mais na tela",
+                    forcar = true
+                )
+                p.overlay?.atualizarContagem("🚫 não recusei · a oferta saiu da tela", p.assinatura)
+                return
+            }
+            if (janela != null) {
+                val (x, y) = ensinado.pontoEm(janela)
+                if (tocarEm(p.displayId, x, y)) {
+                    AutoDiag.anotar(
+                        this,
+                        "recusei (${p.motivos}) no ${appCurto(p.pkg)} no X ensinado (x=$x y=$y)",
+                        forcar = true
+                    )
+                    p.overlay?.atualizarContagem("🚫 RECUSADA · ${p.motivos}", p.assinatura)
+                    return
+                }
+                AutoDiag.anotar(
+                    this,
+                    "o toque ensinado falhou no ${appCurto(p.pkg)} — tentando pelo botão da tela",
+                    forcar = true
+                )
+            }
+        }
+
         val alvo = localizarX(p.displayId, p.pkg)
         val achado = alvo.dados
         val resumo = if (achado != null) Recusa.descrever(achado) else alvo.erro ?: "sem o X"
@@ -507,7 +604,7 @@ class RideAccessibilityService : AccessibilityService() {
                 null -> " · não deu para conferir a oferta"
             }
             AutoDiag.anotar(this, "aviso: recusaria · $linha$conf", forcar = true)
-            p.overlay?.atualizarContagem("🚫 MODO AVISO · $linha · não cliquei")
+            p.overlay?.atualizarContagem("🚫 MODO AVISO · $linha · não cliquei", p.assinatura)
             return
         }
         if (confirmado == false) {
@@ -516,12 +613,12 @@ class RideAccessibilityService : AccessibilityService() {
                 "não recusei: a oferta de ${Report.money(p.valor)} não está mais na tela",
                 forcar = true
             )
-            p.overlay?.atualizarContagem("🚫 não recusei · a oferta saiu da tela")
+            p.overlay?.atualizarContagem("🚫 não recusei · a oferta saiu da tela", p.assinatura)
             return
         }
         if (alvo.paraClicar == null) {
             AutoDiag.anotar(this, "não recusei: $resumo", forcar = true)
-            p.overlay?.atualizarContagem("🚫 não recusei · $resumo")
+            p.overlay?.atualizarContagem("🚫 não recusei · $resumo", p.assinatura)
             return
         }
         val clicou = try {
@@ -535,11 +632,35 @@ class RideAccessibilityService : AccessibilityService() {
                 "recusei (${p.motivos}) no ${appCurto(p.pkg)} · $resumo",
                 forcar = true
             )
-            p.overlay?.atualizarContagem("🚫 RECUSADA · ${p.motivos}")
+            p.overlay?.atualizarContagem("🚫 RECUSADA · ${p.motivos}", p.assinatura)
         } else {
             AutoDiag.anotar(this, "não consegui clicar no X do ${appCurto(p.pkg)}", forcar = true)
-            p.overlay?.atualizarContagem("🚫 não consegui clicar no X do ${appCurto(p.pkg)}")
+            p.overlay?.atualizarContagem("🚫 não consegui clicar no X do ${appCurto(p.pkg)}", p.assinatura)
         }
+    }
+
+    /** Dá um toque na coordenada da tela (o X ensinado à mão), na tela certa. */
+    private fun tocarEm(displayId: Int, x: Int, y: Int): Boolean {
+        // A API pública de gestos do acessibilidade só atinge a tela principal; na 2ª
+        // tela o clique ensinado guia a procura do botão na árvore (logo abaixo).
+        if (displayId != MultiTela.TELA_PRINCIPAL) return false
+        val caminho = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
+        val gesto = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(caminho, 0L, 60L))
+            .build()
+        return try {
+            dispatchGesture(gesto, null, null)
+        } catch (t: Throwable) {
+            false
+        }
+    }
+
+    /** Limites da janela do app na tela (null quando ela não está acessível). */
+    private fun limitesDaJanela(displayId: Int, pkg: String): Rect? {
+        val janela = janelaDoApp(displayId, pkg) ?: return null
+        val r = Rect()
+        runCatching { janela.getBoundsInScreen(r) }
+        return r.takeIf { !it.isEmpty }
     }
 
     /** Derruba as recusas agendadas (leitura nova, card fechado, leitura desligada). */
@@ -547,8 +668,8 @@ class RideAccessibilityService : AccessibilityService() {
         recusas.clear()
         tickRecusa?.let { handler.removeCallbacks(it) }
         tickRecusa = null
-        overlayDaRecusa?.atualizarContagem(null)
-        overlayDaRecusa = null
+        overlay?.limparContagem()
+        overlayExterno?.limparContagem()
     }
 
     /**
@@ -572,7 +693,7 @@ class RideAccessibilityService : AccessibilityService() {
         val idx = Recusa.escolherX(
             candidatos.map { it.dados },
             bounds,
-            Prefs.xAprendido(this, pkg)
+            Prefs.xAprendido(this, pkg, displayId != MultiTela.TELA_PRINCIPAL)
         )
         if (idx == null) {
             return AlvoX(
@@ -726,7 +847,8 @@ class RideAccessibilityService : AccessibilityService() {
         } catch (t: Throwable) {
             null
         } ?: return
-        val janela = janelaDoApp(pendente?.displayId ?: displayAlvo, pkg) ?: return
+        val tela = pendente?.displayId ?: displayAlvo
+        val janela = janelaDoApp(tela, pkg) ?: return
         val bounds = Rect()
         runCatching { janela.getBoundsInScreen(bounds) }
         val r = Rect()
@@ -748,7 +870,12 @@ class RideAccessibilityService : AccessibilityService() {
         // ensina o app a clicar no lugar errado.
         if (pendente == null && Recusa.pontuar(dados, bounds, aprendido = null) <= 0) return
 
-        Prefs.salvarXAprendido(this, pkg, XAprendido.de(dados, bounds))
+        Prefs.salvarXAprendido(
+            this,
+            pkg,
+            XAprendido.de(dados, bounds),
+            externo = tela != MultiTela.TELA_PRINCIPAL
+        )
         AutoDiag.anotar(
             this,
             "aprendi o X do ${appCurto(pkg)}: ${Recusa.descrever(dados)}",
@@ -756,6 +883,98 @@ class RideAccessibilityService : AccessibilityService() {
         )
         // Ele recusou à mão: a contagem pendente não tem mais o que fazer.
         cancelarRecusas()
+    }
+
+    /**
+     * Mira para o motorista ensinar o X. Chamado pelo botão da tela principal:
+     * [app] é "Uber" ou "99", [externo] diz se é a 2ª tela do modo desktop.
+     *
+     * No celular a mira espera 5 s: dá tempo de o motorista abrir o app de corrida
+     * com a oferta na tela antes de apontar. Na 2ª tela ela abre na hora, porque o
+     * app já está visível ali.
+     */
+    fun iniciarCalibracaoDaTela(app: String, externo: Boolean): Boolean {
+        if (!ativo) return false
+        if (externo) {
+            atualizarOverlayExterno()
+            val alvo = overlayExterno?.takeIf { it.disponivel } ?: return false
+            val pkg = pacoteDoApp(app, externo = true)
+            return iniciarCalibracaoX(pkg, app, externo = true, janela = pkg?.let { limitesDaJanela(alvo.tela, it) })
+        }
+        val alvo = overlay?.takeIf { it.disponivel } ?: return false
+        calibracaoPendente?.let { handler.removeCallbacks(it) }
+        // Pausa a leitura já durante a espera: um card aberto cobriria o app que o
+        // motorista está tentando abrir para apontar o X.
+        calibrando = true
+        val espera = Runnable {
+            calibracaoPendente = null
+            val pkg = pacoteDoApp(app, externo = false)
+            val abriu = iniciarCalibracaoX(
+                pkg,
+                app,
+                externo = false,
+                janela = pkg?.let { limitesDaJanela(MultiTela.TELA_PRINCIPAL, it) }
+            )
+            if (!abriu) calibrando = false
+        }
+        calibracaoPendente = espera
+        alvo.toast("Abra o $app: a mira aparece em 5 segundos")
+        handler.postDelayed(espera, 5000L)
+        return true
+    }
+
+    /** Abre a mira numa tela e pausa a leitura automática enquanto ela está aberta. */
+    private fun iniciarCalibracaoX(pkg: String?, app: String?, externo: Boolean, janela: Rect?): Boolean {
+        val alvo = (if (externo) overlayExterno else overlay) ?: return false
+        if (!alvo.disponivel) return false
+        calibrando = true
+        calibracaoPendente?.let { handler.removeCallbacks(it) }
+        calibracaoPendente = null
+        autoScan?.let { handler.removeCallbacks(it) }
+        autoScan = null
+        cancelarRecusas()
+        alvo.iniciarCalibracao(pkg, app, janela)
+        return true
+    }
+
+    /** A mira soltou em cima do X: guarda a posição para o app clicar sozinho depois. */
+    private fun salvarCalibracaoX(pkg: String?, app: String?, relX: Double, relY: Double, externo: Boolean) {
+        val pacote = pkg ?: pacoteDoApp(app ?: "", externo)
+        Prefs.salvarXCalibrado(this, pacote, app, XAprendido.manual(relX, relY), externo)
+        calibrando = false
+        lastScanAt = SystemClock.elapsedRealtime()
+        val onde = if (externo) "na 2ª tela" else "no celular"
+        AutoDiag.anotar(
+            this,
+            "aprendi o X do ${app ?: pacote ?: "app"} $onde (${(relX * 100).toInt()}%, ${(relY * 100).toInt()}% da janela)",
+            forcar = true
+        )
+    }
+
+    /** Pacote de corrida da família escolhida ("Uber"/"99") na tela indicada. */
+    private fun pacoteDoApp(app: String, externo: Boolean): String? {
+        val familia = AutoScanPolicy.familiaDoApp(app)
+        fun combina(pkg: String?): Boolean {
+            if (pkg == null || !AutoScanPolicy.isRideApp(pkg)) return false
+            return familia == null || AutoScanPolicy.familiaDe(pkg) == familia
+        }
+        if (!externo) {
+            val ativo = pacoteAtivo() ?: lastPackage
+            if (combina(ativo)) return ativo
+            val janelas = runCatching { windows }.getOrNull() ?: return null
+            for (janela in janelas) {
+                val pkg = pacoteDaJanela(janela)
+                if (combina(pkg)) return pkg
+            }
+            return null
+        }
+        val tela = overlayExterno?.tela ?: displayExternoDisponivel() ?: return null
+        val janelas = runCatching { windowsOnAllDisplays[tela] }.getOrNull() ?: return null
+        for (janela in janelas) {
+            val pkg = pacoteDaJanela(janela)
+            if (combina(pkg)) return pkg
+        }
+        return null
     }
 
     /** "Uber" / "99" para as mensagens do diagnóstico. */
@@ -807,6 +1026,9 @@ class RideAccessibilityService : AccessibilityService() {
             return
         }
         if (scanning) return
+        // Com a mira ensinando o X, a tela precisa ficar parada: nada de captura
+        // automática no meio da calibração.
+        if (calibrando && !manual) return
 
         val settings = config ?: Prefs.load(this)
         val resolvido = alvo ?: resolverAlvo(settings)
@@ -939,7 +1161,12 @@ class RideAccessibilityService : AccessibilityService() {
                 }
                 // O resultado aparece na tela que foi lida; sem overlay ali, cai no celular.
                 val destino = overlayTela?.takeIf { it.disponivel } ?: overlay
-                destino?.showResults(analises, settings)
+                // Cada card nasce dentro da janela do app que o gerou: com Uber e 99
+                // lado a lado, aparecem dois cards, um em cada janela.
+                val resultados = analises.mapIndexed { i, a ->
+                    CardNaTela(a, lidos.getOrNull(i)?.pkg, lidos.getOrNull(i)?.janela)
+                }
+                destino?.showResults(resultados, settings)
 
                 // Recusa automática: só depois de mostrar o card, e só para as ofertas
                 // que não batem os mínimos (cada card sabe de qual app ele veio).
@@ -953,7 +1180,7 @@ class RideAccessibilityService : AccessibilityService() {
                         )
                     }
                 }
-                agendarRecusas(analises, lidos.map { it.pkg }, settings, destino, displayId)
+                agendarRecusas(analises, lidos, settings, destino, displayId)
             } catch (t: Throwable) {
                 overlayTela?.restoreAfterCapture()
                 if (manual) overlay?.toast("Erro: ${t.message}")
@@ -1018,7 +1245,7 @@ class RideAccessibilityService : AccessibilityService() {
         // Uma janela por app de corrida conhecido. Janela sem pacote fica de fora: no
         // Smart Connect ela é a moldura do sistema, e recortá-la gerava um "card" de
         // mentira na metade da tela em que não havia oferta (bug da 1.11).
-        val vistas = LinkedHashMap<String, Pair<String, android.graphics.Rect>>()
+        val vistas = LinkedHashMap<String, Triple<String, android.graphics.Rect, android.graphics.Rect>>()
         for (janela in janelas) {
             val pkg = try {
                 janela.root?.packageName?.toString()
@@ -1033,16 +1260,19 @@ class RideAccessibilityService : AccessibilityService() {
                 continue
             }
             if (retangulo.isEmpty) continue
+            // Guarda os limites originais: o card do Radar nasce ancorado na janela
+            // inteira, mesmo quando a leitura começa abaixo de um card anterior.
+            val original = android.graphics.Rect(retangulo)
             if (limiteNaTela > 0) retangulo.top = maxOf(retangulo.top, limiteNaTela)
             if (retangulo.height() < alturaMinima) continue
-            vistas.putIfAbsent(pkg, pkg to retangulo)
+            vistas.putIfAbsent(pkg, Triple(pkg, retangulo, original))
         }
         if (vistas.isEmpty()) return emptyList()
 
         // Um app só também é recortado: assim o OCR não enxerga a outra metade da tela,
         // onde o outro app mostra o saldo do dia (que virava valor da corrida).
         if (vistas.size == 1) {
-            val (pkg, janela) = vistas.values.first()
+            val (pkg, janela, original) = vistas.values.first()
             val unico = Recortes.paraCaptura(
                 janela = janela,
                 larguraCaptura = captura.width,
@@ -1055,7 +1285,7 @@ class RideAccessibilityService : AccessibilityService() {
             } catch (t: Throwable) {
                 return emptyList()
             }
-            return listOf(ParLeitura(corte, pkg))
+            return listOf(ParLeitura(corte, pkg, original))
         }
 
         val ordenados = vistas.entries.toList()
@@ -1077,8 +1307,9 @@ class RideAccessibilityService : AccessibilityService() {
                 return emptyList()
             }
             // Guarda de qual janela veio o pedaço: é o que diz de qual app é o card
-            // (e, por consequência, qual X apertar se a oferta for ruim).
-            recortes.add(ParLeitura(corte, ordenados[i].value.first))
+            // (e, por consequência, qual X apertar se a oferta for ruim). A janela
+            // original fica junto para ancorar o card do Radar nela.
+            recortes.add(ParLeitura(corte, ordenados[i].value.first, ordenados[i].value.third))
         }
         return recortes
     }
@@ -1107,10 +1338,10 @@ class RideAccessibilityService : AccessibilityService() {
     }
 
     /** Um pedaço de captura e de qual app ele veio (null quando veio da tela inteira). */
-    private class ParLeitura(val bmp: Bitmap, val pkg: String?)
+    private class ParLeitura(val bmp: Bitmap, val pkg: String?, val janela: Rect? = null)
 
-    /** Um card lido, com o app de onde ele veio. */
-    private class CardLido(val card: RideCard, val pkg: String?)
+    /** Um card lido, com o app e a janela de onde ele veio. */
+    private class CardLido(val card: RideCard, val pkg: String?, val janela: Rect? = null)
 
     /**
      * OCR + parser de cada pedaço de imagem. Devolve os cards encontrados e a última
@@ -1137,7 +1368,7 @@ class RideAccessibilityService : AccessibilityService() {
             val pkg = pedaco.pkg ?: pkgPadrao
             val card = texto?.let { RideParser.parse(it, pkg) } ?: continue
             if (lidos.none { cardSignature(it.card) == cardSignature(card) }) {
-                lidos.add(CardLido(card, pkg))
+                lidos.add(CardLido(card, pkg, pedaco.janela))
             }
         }
         return lidos to erro
@@ -1189,6 +1420,9 @@ class RideAccessibilityService : AccessibilityService() {
     fun desativar() {
         ativo = false
         cancelarRecusas()
+        calibracaoPendente?.let { handler.removeCallbacks(it) }
+        calibracaoPendente = null
+        calibrando = false
         handler.removeCallbacksAndMessages(null)
         scanning = false
         lastCardSignature = null
@@ -1213,6 +1447,9 @@ class RideAccessibilityService : AccessibilityService() {
         instance = null
         ativo = false
         cancelarRecusas()
+        calibracaoPendente?.let { handler.removeCallbacks(it) }
+        calibracaoPendente = null
+        calibrando = false
         handler.removeCallbacksAndMessages(null)
         overlayExterno?.removeAll()
         overlayExterno = null

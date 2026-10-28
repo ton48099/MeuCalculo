@@ -284,6 +284,41 @@ class RecusaTest {
         assertNull(Prefs.xAprendido(ctx, "com.app99.driver"))
     }
 
+    @Test
+    fun xEnsinadoAMaoValePorTelaEFamilia() {
+        val ctx: Context = ApplicationProvider.getApplicationContext()
+        val ensinado = XAprendido.manual(0.93, 0.17)
+
+        // Ensina no celular, com o pacote real do Uber.
+        Prefs.salvarXCalibrado(ctx, "com.ubercab.driver", "Uber", ensinado, externo = false)
+        assertEquals(ensinado, Prefs.xAprendido(ctx, "com.ubercab.driver"))
+        // Outra versão do app da mesma família herda a posição.
+        assertEquals(ensinado, Prefs.xAprendido(ctx, "com.ubercab"))
+        // A 2ª tela tem outra posição: o que foi ensinado no celular não vale lá.
+        assertNull(Prefs.xAprendido(ctx, "com.ubercab.driver", externo = true))
+        // E o X da 99 continua sendo outro.
+        assertNull(Prefs.xAprendido(ctx, "com.app99.driver"))
+
+        val naSegundaTela = XAprendido.manual(0.88, 0.10)
+        Prefs.salvarXCalibrado(ctx, "com.app99.driver", "99", naSegundaTela, externo = true)
+        assertEquals(naSegundaTela, Prefs.xAprendido(ctx, "com.app99.driver", externo = true))
+        // A posição do celular da 99 não foi tocada.
+        assertNull(Prefs.xAprendido(ctx, "com.app99.driver", externo = false))
+    }
+
+    @Test
+    fun pontoDoXEnsinadoAcompanhaAJanela() {
+        val x = XAprendido.manual(0.5, 0.25)
+        assertTrue(x.manual)
+        assertEquals(500 to 400, x.pontoEm(Rect(100, 200, 900, 1000)))
+        // Janela movida para a 2ª tela: o ponto acompanha, sem voltar para o lugar antigo.
+        assertEquals(1600 to 200, x.pontoEm(Rect(1200, 0, 2000, 800)))
+        // Fora da janela, o ponto é preso na borda (nunca clica fora do app).
+        val canto = XAprendido.manual(0.0, 0.0)
+        assertEquals(100 to 200, canto.pontoEm(Rect(100, 200, 900, 1000)))
+        assertEquals(x, XAprendido.decode(x.encode()))
+    }
+
     // ------------------------------------------- a oferta ainda está na tela?
 
     @Test

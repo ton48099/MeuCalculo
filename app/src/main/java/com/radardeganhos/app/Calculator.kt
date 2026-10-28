@@ -40,6 +40,10 @@ data class RideAnalysis(
     val veredito: Veredito
 )
 
+/** Assinatura da oferta: identifica o mesmo card entre leituras e entre cards na tela. */
+fun RideAnalysis.assinatura(): String =
+    "${card.app}|${card.valor}|${card.kmTotal}|${card.minTotal}"
+
 object Calculator {
 
     fun analyze(card: RideCard, s: Settings): RideAnalysis {

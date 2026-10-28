@@ -63,7 +63,7 @@
                 android:id="@+id/btnRecusa"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="10dp"
                 android:backgroundTint="@color/surface2"
                 android:text="🚫 RECUSA SOZINHO: LIGADA"
                 android:textColor="@color/text"
@@ -72,6 +72,22 @@
                 android:padding="13dp"
                 app:cornerRadius="12dp"
                 app:strokeColor="@color/orange"
+                app:strokeWidth="1dp" />
+
+            <!-- Ensina a posição do X arrastando uma mira até o botão do Uber/99 -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEnsinaX"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:backgroundTint="@color/surface2"
+                android:text="🎯 ENSINAR ONDE FICA O X"
+                android:textColor="@color/yellow"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:padding="13dp"
+                app:cornerRadius="12dp"
+                app:strokeColor="@color/yellow"
                 app:strokeWidth="1dp" />
 
             <!-- Card: Custos -->

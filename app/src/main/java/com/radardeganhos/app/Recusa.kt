@@ -46,18 +46,43 @@ data class XAprendido(
     val id: String,
     val descricao: String,
     val relX: Double,
-    val relY: Double
+    val relY: Double,
+    /**
+     * true quando o motorista arrastou a mira até o X (em vez de o app aprender
+     * sozinho num toque). Nesse caso o clique é dado na coordenada ensinada, que
+     * funciona mesmo quando o app não expõe o botão na árvore de acessibilidade.
+     */
+    val manual: Boolean = false
 ) {
-    fun encode(): String = "$id\u0001$descricao\u0001$relX\u0001$relY"
+    fun encode(): String =
+        "$id\u0001$descricao\u0001$relX\u0001$relY\u0001${if (manual) 1 else 0}"
+
+    /** Ponto de clique na tela, a partir da posição relativa dentro da janela. */
+    fun pontoEm(janela: Rect): Pair<Int, Int> {
+        val x = janela.left + (relX * janela.width()).toInt()
+        val y = janela.top + (relY * janela.height()).toInt()
+        return x.coerceIn(janela.left, (janela.right - 1).coerceAtLeast(janela.left)) to
+            y.coerceIn(janela.top, (janela.bottom - 1).coerceAtLeast(janela.top))
+    }
 
     companion object {
         fun decode(texto: String?): XAprendido? {
             val partes = texto?.split('\u0001') ?: return null
-            if (partes.size != 4) return null
+            if (partes.size !in 4..5) return null
             val x = partes[2].toDoubleOrNull() ?: return null
             val y = partes[3].toDoubleOrNull() ?: return null
-            if (partes[0].isBlank() && partes[1].isBlank()) return null
-            return XAprendido(partes[0], partes[1], x, y)
+            if (x !in 0.0..1.0 || y !in 0.0..1.0) return null
+            val manual = partes.size == 5 && partes[4] == "1"
+            // Registro antigo sem id/descrição e no canto 0,0 é lixo; o ensinado à mão
+            // pode legitimamente ser em qualquer canto, inclusive 0,0.
+            if (!manual && partes[0].isBlank() && partes[1].isBlank()) return null
+            return XAprendido(
+                id = partes[0],
+                descricao = partes[1],
+                relX = x,
+                relY = y,
+                manual = manual
+            )
         }
 
         /** Posição do botão dentro da janela do app, de 0 a 1. */
@@ -71,6 +96,15 @@ data class XAprendido(
                 relY = (c.centroY - janela.top) / altura
             )
         }
+
+        /** X ensinado à mão: posição pura, sem depender de id/descrição do botão. */
+        fun manual(relX: Double, relY: Double): XAprendido = XAprendido(
+            id = "",
+            descricao = "",
+            relX = relX.coerceIn(0.0, 1.0),
+            relY = relY.coerceIn(0.0, 1.0),
+            manual = true
+        )
     }
 }
 

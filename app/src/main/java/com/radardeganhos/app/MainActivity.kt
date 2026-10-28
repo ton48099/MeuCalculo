@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.provider.Settings as AndroidSettings
 import android.provider.Settings.Secure as SecureSettings
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
@@ -58,6 +59,9 @@ class MainActivity : AppCompatActivity() {
             atualizarRecusa()
         }
 
+        // Mira para ensinar onde fica o X de cada app (celular e 2ª tela).
+        findViewById<TextView>(R.id.btnEnsinaX).setOnClickListener { ensinarX() }
+
         // Bottom Navigation
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
         bottomNav.setOnItemSelectedListener { item ->
@@ -86,6 +90,45 @@ class MainActivity : AppCompatActivity() {
         } else {
             "🚫 RECUSA SOZINHO: DESLIGADA"
         }
+    }
+
+    /** Mira para ensinar o X: escolhe o app e a tela, depois o serviço abre a mira. */
+    private fun ensinarX() {
+        val apps = arrayOf("Uber", "99")
+        AlertDialog.Builder(this)
+            .setTitle("Ensinar o X de qual app?")
+            .setItems(apps) { _, qual -> escolherTelaDoX(apps[qual]) }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun escolherTelaDoX(app: String) {
+        val opcoes = arrayOf("Neste celular (a mira aparece em 5 s)", "Na 2ª tela / modo desktop")
+        AlertDialog.Builder(this)
+            .setTitle("Onde está o $app?")
+            .setItems(opcoes) { _, escolha ->
+                val inst = RideAccessibilityService.instance
+                if (inst == null || !inst.ativo) {
+                    tvStatus.text = "Ative a leitura de tela antes de ensinar o X."
+                    return@setItems
+                }
+                val externo = escolha == 1
+                if (!inst.iniciarCalibracaoDaTela(app, externo)) {
+                    tvStatus.text = if (externo) {
+                        "A 2ª tela não está disponível: ligue o modo desktop e conecte a tela."
+                    } else {
+                        "Não consegui abrir a mira. Ative a leitura de tela e tente de novo."
+                    }
+                } else {
+                    tvStatus.text = if (externo) {
+                        "Arraste a mira até o X do $app e toque em SALVAR."
+                    } else {
+                        "Abra o $app: a mira aparece em 5 segundos."
+                    }
+                }
+            }
+            .setNegativeButton("Voltar", null)
+            .show()
     }
 
     private fun atualizarBotao() {

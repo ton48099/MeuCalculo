@@ -39,6 +39,34 @@ object AutoScanPolicy {
         return RAIZES_CORRIDA.any { raiz -> p == raiz || p.startsWith("$raiz.") }
     }
 
+    /**
+     * Família do app de corrida — "Uber" ou "99" — para guardar o X ensinado à mão
+     * mesmo quando o pacote muda entre versões (com.ubercab.driver, com.ubercab;
+     * com.app99.driver, com.taxis99…). A posição do X é do app, não do pacote.
+     */
+    fun familiaDe(pkg: String): String? {
+        val p = pkg.lowercase()
+        return when {
+            p.startsWith("com.ubercab") -> FAMILIA_UBER
+            p.startsWith("com.taxis99") || p.startsWith("com.app99") ||
+                p.startsWith("com.99app") || p.startsWith("br.com.99") ||
+                p.startsWith("com.nine") -> FAMILIA_99
+            else -> null
+        }
+    }
+
+    fun familiaDoApp(app: String?): String? {
+        val a = app?.lowercase() ?: return null
+        return when {
+            a.contains("uber") -> FAMILIA_UBER
+            a.contains("99") -> FAMILIA_99
+            else -> null
+        }
+    }
+
+    const val FAMILIA_UBER = "@uber"
+    const val FAMILIA_99 = "@99"
+
     fun intervaloMs(s: Settings): Long = s.autoIntervaloSeg.coerceIn(2, 120) * 1000L
 
     /**

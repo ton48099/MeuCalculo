@@ -30,10 +30,12 @@ object Recortes {
         val ky = alturaCaptura.toDouble() / alturaTela
         val x = (janela.left * kx).toInt().coerceIn(0, larguraCaptura - 1)
         val y = (janela.top * ky).toInt().coerceIn(0, alturaCaptura - 1)
-        val w = (janela.width() * kx).toInt().coerceAtLeast(1)
-        val h = (janela.height() * ky).toInt().coerceAtLeast(1)
-        if (x + w > larguraCaptura || y + h > alturaCaptura) return null
-        return Rect(x, y, x + w, y + h)
+        val direita = (janela.right * kx).toInt().coerceIn(0, larguraCaptura)
+        val baixo = (janela.bottom * ky).toInt().coerceIn(0, alturaCaptura)
+        // A janela pode passar 1 px da borda por arredondamento (ou pela barra do
+        // sistema). Cortar o excedente é melhor do que desistir da divisão inteira.
+        if (direita <= x || baixo <= y) return null
+        return Rect(x, y, direita, baixo)
     }
 
     /**

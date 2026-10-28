@@ -6,7 +6,7 @@ App Android que lê o card de corrida do **Uber** e da **99** em qualquer tela (
 
 ```
 pacote: com.radardeganhos.app
-versão: 1.14 (versionCode 15)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
+versão: 1.15 (versionCode 16)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
 ```
 
 O APK sai do próprio Android Studio (aba **Build › Build App Bundle(s) / APK(s) › Build APK(s)**)
@@ -27,7 +27,7 @@ Em `dist/` fica só o APK da versão atual; os anteriores continuam nas releases
 
 | Opção | Para quê |
 |---|---|
-| `-Versao 1.15` | escolhe o número (padrão: sobe o último, `1.14` → `1.15`) |
+| `-Versao 1.15` | escolhe o número (padrão: sobe o último, `1.15` → `1.16`) |
 | `-Notas "..."` ou `-NotasArquivo notas.md` | texto da release |
 | `-Simulacao` | mostra tudo sem build, commit ou envio |
 | `-SemBump` | publica a versão que já está no `build.gradle.kts`, sem somar 1 |
@@ -239,7 +239,7 @@ Requisitos: JDK 17, Android SDK 34 (o wrapper usa Gradle 9.6).
 
 ```bash
 ./gradlew :app:assembleRelease      # gera app/build/outputs/apk/release/app-release.apk
-./gradlew :app:testDebugUnitTest    # 99 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, recusa automática (critérios, veredito RUIM, escolha do X, contagem)
+./gradlew :app:testDebugUnitTest    # 103 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, recusa automática (critérios, veredito RUIM, escolha do X, contagem, X ensinado à mão por tela)
 ```
 
 Se o Android Studio estiver instalado, o JDK dele serve (`C:\Program Files\Android\Android Studio\jbr`);

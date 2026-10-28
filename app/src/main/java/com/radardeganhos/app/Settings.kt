@@ -49,7 +49,7 @@ data class Settings(
     val cardDuracaoSeg: Int = 12,
     /** Nível de opacidade do card (0-100). */
     val cardOpacidade: Int = 100,
-    /** Tamanho da fonte do card: "pequena", "media" (padrão), "grande". */
+    /** Tamanho da fonte do card: "pequena", "media" (padrão), "grande" ou "extra". */
     val cardTamanhoFonte: String = "media",
     /** Empilhar novos cards (deslize para ver). */
     val cardEmpilhar: Boolean = false,
@@ -152,12 +152,35 @@ object Prefs {
      * Impressão do botão X que o próprio motorista ensinou, por pacote do app
      * ("com.ubercab.driver", "com.app99.driver"…). O X do Uber e o da 99 ficam em
      * lugares diferentes, então cada app tem o seu.
+     *
+     * No modo desktop a janela do app fica em outro lugar (e com outro tamanho), por
+     * isso a posição é guardada separada por tela: celular e 2ª tela. Se o pacote
+     * exato não tiver posição, vale a da família (Uber/99) ensinada à mão e, por
+     * último, a posição antiga (antes da separação por tela).
      */
-    fun xAprendido(c: Context, pkg: String): XAprendido? =
-        XAprendido.decode(sp(c).getString("xBotao_$pkg", null))
+    fun xAprendido(c: Context, pkg: String, externo: Boolean = false): XAprendido? {
+        val p = sp(c)
+        val modo = if (externo) "externa" else "celular"
+        val familia = AutoScanPolicy.familiaDe(pkg)
+        return XAprendido.decode(p.getString("xBotao_${pkg}_$modo", null))
+            ?: familia?.let { XAprendido.decode(p.getString("xBotao_${it}_$modo", null)) }
+            ?: XAprendido.decode(p.getString("xBotao_$pkg", null))
+    }
 
-    fun salvarXAprendido(c: Context, pkg: String, x: XAprendido) {
-        sp(c).edit().putString("xBotao_$pkg", x.encode()).apply()
+    fun salvarXAprendido(c: Context, pkg: String, x: XAprendido, externo: Boolean = false) {
+        val modo = if (externo) "externa" else "celular"
+        sp(c).edit().putString("xBotao_${pkg}_$modo", x.encode()).apply()
+    }
+
+    /** X ensinado arrastando a mira: vale para o pacote real e para a família do app. */
+    fun salvarXCalibrado(c: Context, pkg: String?, app: String?, x: XAprendido, externo: Boolean) {
+        val modo = if (externo) "externa" else "celular"
+        val ed = sp(c).edit()
+        if (!pkg.isNullOrBlank()) ed.putString("xBotao_${pkg}_$modo", x.encode())
+        AutoScanPolicy.familiaDoApp(app)?.let { familia ->
+            ed.putString("xBotao_${familia}_$modo", x.encode())
+        }
+        ed.apply()
     }
 
     fun load(c: Context): Settings {
