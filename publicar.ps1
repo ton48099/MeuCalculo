@@ -122,7 +122,13 @@ Ok "repositorio $repositorio (branch $branch)"
 # ---------- 2. notas ----------
 if (-not $Notas -and $NotasArquivo) {
     if (-not (Test-Path $NotasArquivo)) { throw "Arquivo de notas nao encontrado: $NotasArquivo" }
-    $Notas = Get-Content $NotasArquivo -Raw
+    # ReadAllText e nao Get-Content -Raw: o Get-Content devolve a string com as
+    # propriedades do provedor (PSPath, ReadCount...) e o ConvertTo-Json serializava
+    # isso como objeto -- era o 422 da release ("body ... is not a string").
+    $Notas = [System.IO.File]::ReadAllText(
+        (Resolve-Path -LiteralPath $NotasArquivo).ProviderPath,
+        [System.Text.Encoding]::UTF8
+    ).Trim()
 }
 if (-not $Notas) {
     $Notas = "**APK $Versao (versionCode $codeNovo)** - assinado com o mesmo keystore. Baixe o arquivo abaixo."
@@ -225,7 +231,7 @@ $corpo = @{
     # A branch, e nao o SHA: com SHA o GitHub devolve 422 quando a tag ja existe.
     target_commitish = $branch
     name             = if ($Resumo) { "Versao $Versao - $Resumo" } else { "Versao $Versao" }
-    body             = $Notas
+    body             = [string]$Notas
     draft            = $false
     prerelease       = $false
 } | ConvertTo-Json -Depth 3
