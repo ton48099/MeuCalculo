@@ -2,7 +2,6 @@ package com.radardeganhos.app
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -13,9 +12,6 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.button.MaterialButton
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * Lista das corridas já analisadas: valor, R$/km, R$/hora e o trajeto
@@ -121,7 +117,7 @@ class HistoryActivity : AppCompatActivity() {
         if (thumb != null) {
             img.setImageBitmap(thumb)
             img.visibility = View.VISIBLE
-            img.setOnClickListener { mostrarPrint(r.print!!) }
+            img.setOnClickListener { r.print?.let { mostrarPrint(it) } }
         } else {
             img.setImageDrawable(null)
             img.visibility = View.GONE

@@ -76,7 +76,6 @@ class RecusaTest {
     @Test
     fun desligadaNaoRecusaNada() {
         assertTrue(Recusa.motivos(Calculator.analyze(uberRuim, Settings()), Settings()).isEmpty())
-        assertFalse(Recusa.deveRecusar(Calculator.analyze(uberRuim, Settings()), Settings()))
     }
 
     @Test

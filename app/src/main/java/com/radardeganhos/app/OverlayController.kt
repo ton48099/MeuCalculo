@@ -187,8 +187,6 @@ class OverlayController(
         runCatching { Toast.makeText(service, msg, Toast.LENGTH_SHORT).show() }
     }
 
-    fun showResult(a: RideAnalysis, s: Settings) = showResults(listOf(a), s)
-
     /**
      * Desenha um ou mais resultados. Com Uber e 99 abertos lado a lado na tela
      * externa, uma leitura devolve dois cards e eles saem empilhados — um embaixo
@@ -201,9 +199,6 @@ class OverlayController(
         if (!s.cardEmpilhar) fecharCards(notificar = false)
         analises.forEach { desenhar(it, s) }
     }
-
-    /** Fecha o card sozinho depois do tempo configurado (0 = só no toque). */
-    fun hidePanel() = fecharCards(notificar = true)
 
     /**
      * Escreve (ou apaga, com null) a linha da contagem regressiva da recusa no card

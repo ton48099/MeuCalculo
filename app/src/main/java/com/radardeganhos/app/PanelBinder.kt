@@ -101,7 +101,7 @@ object PanelBinder {
             if (a.fixo > 0) append(" · Fixo ${Report.money(a.fixo)}")
             append("\nCusto total ${Report.money(a.custoTotal)}")
             if (a.card.taxaDeslocamento != null) {
-                append(" · taxa ${Report.money(a.card.taxaDeslocamento!!)} (não somada)")
+                append(" · taxa ${Report.money(a.card.taxaDeslocamento)} (não somada)")
             }
         }
 

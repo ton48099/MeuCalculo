@@ -8,8 +8,6 @@
     <color name="textDim">#9AA6B8</color>
     <!-- Laranja principal (substitui o verde/rosa) -->
     <color name="orange">#FF9500</color>
-    <color name="orangeDark">#E68500</color>
-    <color name="green">#00D26A</color>
     <color name="yellow">#FFC531</color>
     <color name="red">#FF4D5E</color>
     <color name="blue">#4C8DFF</color>

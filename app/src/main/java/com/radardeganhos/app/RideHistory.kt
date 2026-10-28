@@ -46,7 +46,8 @@ object RideHistory {
 
     fun save(c: Context, lista: List<RideRecord>) {
         sp(c).edit().putString(KEY, encode(lista)).apply()
-        // Apaga os prints das corridas que saíram do limite do histórico.
+        // Apaga os prints das corridas que saíram do limite do histórico (e os que
+        // foram perdidos numa limpeza). Roda só quando uma corrida nova entra.
         Prints.manter(c, lista.mapNotNull { it.print }.toSet())
     }
 

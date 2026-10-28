@@ -111,46 +111,4 @@ object Report {
         val m = Math.round(min).toInt()
         return if (m < 60) "$m min" else "${m / 60}h ${String.format(java.util.Locale.US, "%02d", m % 60)}min"
     }
-
-    /** Texto completo exibido na tela do app (e no teste de texto colado). */
-    fun detalhado(a: RideAnalysis, s: Settings): String {
-        val card = a.card
-        val sb = StringBuilder()
-        sb.append("${a.veredito.label}  ·  ${if (card.app != null) "card ${card.app}" else "leitura de tela"}\n\n")
-        sb.append("Gera nesta corrida: ${money(a.brutoHora)}/h  ·  ${money(a.brutoKm)}/km\n")
-        sb.append("Lucro líquido: ${money(a.liquido)}  (${money(a.liquidoHora)}/h  ·  ${money(a.liquidoKm)}/km)\n\n")
-        sb.append("Corrida: ${money(a.bruto)}\n")
-        sb.append("Distância: ${km(card.kmTotal)} (${km(card.kmDeslocamento)} até o cliente + ${km(card.kmViagem)} de viagem)\n")
-        if (card.kmDeslocamento > 0 || s.retornoPct > 0) {
-            sb.append("Km cobrados no custo: ${km(a.kmCobrado)}\n")
-        }
-        sb.append("Tempo: ${tempo(a.minTotal)} (${tempo(card.minDeslocamento)} + ${tempo(card.minViagem)}")
-        if (s.esperaMin > 0) sb.append(" + ${tempo(s.esperaMin)} de espera")
-        sb.append(")\n\n")
-
-        sb.append("Custos\n")
-        sb.append("• Combustível: ${money(a.combustivel)}\n")
-        sb.append("• Manutenção: ${money(a.manutencao)}\n")
-        if (a.comissao > 0) sb.append("• Comissão: ${money(a.comissao)}\n")
-        if (a.fixo > 0) sb.append("• Custo fixo: ${money(a.fixo)}\n")
-        sb.append("• Custo total: ${money(a.custoTotal)}\n")
-        sb.append("• Sobra: ${money(a.liquido)}\n\n")
-
-        sb.append("Meta: ${money(s.metaKm)}/km e ${money(s.metaHora)}/h  ·  nota ${Math.round(a.score)}%\n")
-        if (card.valor < a.valorMinimo) {
-            sb.append("Para bater a meta esta corrida precisaria pagar ${money(a.valorMinimo)} (faltam ${money(a.valorMinimo - card.valor)}).\n")
-        } else {
-            sb.append("Acima do mínimo de ${money(a.valorMinimo)} para bater a meta.\n")
-        }
-        if (card.precoPorKmApp != null) {
-            sb.append("App informa ${money(card.precoPorKmApp!!)}/km bruto (o cálculo usa o total).\n")
-        }
-        if (card.taxaDeslocamento != null) {
-            sb.append("Taxa de deslocamento detectada: ${money(card.taxaDeslocamento!!)} — não somada ao valor.\n")
-        }
-        if (card.avisos.isNotEmpty()) {
-            sb.append("\nAvisos: ${card.avisos.joinToString("; ")}")
-        }
-        return sb.toString()
-    }
 }

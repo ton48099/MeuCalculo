@@ -58,6 +58,9 @@ class RideAccessibilityService : AccessibilityService() {
     private var screenReader: ScreenReader? = null
     private var overlay: OverlayController? = null
 
+    /** Tarefa da leitura automática agendada pelo tique. */
+    private var autoScan: Runnable? = null
+
     private var scanning = false
     private var lastScanAt = 0L
     private var lastPackage: String? = null
@@ -249,8 +252,7 @@ class RideAccessibilityService : AccessibilityService() {
             // Intervalo venceu: dispara EXATAMENTE o que o botão manual faria.
             lastScanAt = now
             AutoDiag.anotar(this, "${pkg ?: lastPackage ?: "tela"} · lendo sozinho agora", forcar = true)
-            handler.removeCallbacks(autoScan)
-            handler.postDelayed(autoScan, 150L)
+            agendarLeitura(settings, alvo)
         } else if (!motivo.startsWith("esperando")) {
             // Tudo que barra a leitura aparece no diagnóstico, nunca em silêncio.
             AutoDiag.anotar(this, "${pkg ?: lastPackage ?: "?"} · $motivo")
@@ -258,20 +260,12 @@ class RideAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * Escolhe de onde ler: o app de corrida da tela externa (modo desktop) tem
-     * prioridade; senão, a tela principal. Devolve null quando não há nada a ler.
-     *
-     * A tela externa só entra quando existe um app de corrida ABERTO nela. Antes eu
-     * caía para "qualquer tela extra conectada", e com o modo desktop ligado a leitura
-     * do celular morria (o celular nunca era escolhido).
+     * Escolhe de onde ler. A regra — e os testes dela — mora em [MultiTela.alvo]:
+     * a 2ª tela só entra quando existe um app de corrida ABERTO nela; senão lê o
+     * celular (foi o que a 1.11 quebrou ao cair em "qualquer tela extra").
      */
-    private fun resolverAlvo(s: Settings): Pair<String?, Int>? {
-        if (s.modoDesktop) {
-            val externa = corridaNaTelaExterna(s)
-            if (externa != null) return externa
-        }
-        return (pacoteAtivo() ?: lastPackage)?.let { it to MultiTela.TELA_PRINCIPAL }
-    }
+    private fun resolverAlvo(s: Settings): Pair<String?, Int>? =
+        MultiTela.alvo(s.modoDesktop, corridaNaTelaExterna(s), pacoteAtivo() ?: lastPackage)
 
     /** Varredura das telas externas, com cache — só roda com o modo desktop ligado. */
     private fun corridaNaTelaExterna(s: Settings): Pair<String, Int>? {
@@ -760,7 +754,17 @@ class RideAccessibilityService : AccessibilityService() {
         else -> pkg
     }
 
-    private val autoScan = Runnable { analyzeScreen(manual = false, tela = null) }
+    /**
+     * Dispara a leitura automática logo depois do tique, reaproveitando a tela e as
+     * configurações já resolvidas nele: sem isso, o mesmo trabalho (ler o pacote em
+     * primeiro plano e varrer as janelas) era feito duas vezes a cada 2 segundos.
+     */
+    private fun agendarLeitura(settings: Settings, alvo: Pair<String?, Int>?) {
+        autoScan?.let { handler.removeCallbacks(it) }
+        val tarefa = Runnable { analyzeScreen(manual = false, config = settings, alvo = alvo) }
+        autoScan = tarefa
+        handler.postDelayed(tarefa, 150L)
+    }
 
     override fun onInterrupt() {
         scanning = false
@@ -771,8 +775,15 @@ class RideAccessibilityService : AccessibilityService() {
      *
      * @param tela qual tela ler (0 = celular, outro = tela externa). null = deixa a
      *             política decidir, que é o que a auto-análise usa.
+     * @param config configurações já carregadas (a auto-análise passa as do tique).
+     * @param alvo tela/pacote já resolvidos no tique — evita repetir a varredura.
      */
-    fun analyzeScreen(manual: Boolean, tela: Int? = null) {
+    fun analyzeScreen(
+        manual: Boolean,
+        tela: Int? = null,
+        config: Settings? = null,
+        alvo: Pair<String?, Int>? = null
+    ) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             if (manual) overlay?.toast("A leitura de tela requer Android 11 ou superior")
             return
@@ -786,8 +797,8 @@ class RideAccessibilityService : AccessibilityService() {
         }
         if (scanning) return
 
-        val settings = Prefs.load(this)
-        val resolvido = resolverAlvo(settings)
+        val settings = config ?: Prefs.load(this)
+        val resolvido = alvo ?: resolverAlvo(settings)
         val displayId = tela ?: resolvido?.second ?: displayAlvo
         val naTelaPrincipal = displayId == MultiTela.TELA_PRINCIPAL
         // Ler a 2ª tela com o pacote do celular rotulava o card do Uber como 99 (e
@@ -838,7 +849,7 @@ class RideAccessibilityService : AccessibilityService() {
                     )
                     return@launch
                 }
-                val captura = bmp ?: return@launch
+                val captura = bmp
 
                 val reader = screenReader ?: ScreenReader().also { screenReader = it }
 
@@ -984,7 +995,7 @@ class RideAccessibilityService : AccessibilityService() {
     private fun recortesPorJanela(captura: Bitmap, displayId: Int, limiteNaTela: Int): List<ParLeitura> {
         if (displayId == MultiTela.TELA_PRINCIPAL) return emptyList()
         val janelas = try {
-            windowsOnAllDisplays?.get(displayId)
+            windowsOnAllDisplays[displayId]
         } catch (t: Throwable) {
             null
         } ?: return emptyList()
@@ -1063,7 +1074,7 @@ class RideAccessibilityService : AccessibilityService() {
 
     /** Pacote do app de corrida visível numa tela (null = não deu para saber). */
     private fun pacoteDaTela(displayId: Int): String? {
-        val janelas = runCatching { windowsOnAllDisplays?.get(displayId) }.getOrNull() ?: return null
+        val janelas = runCatching { windowsOnAllDisplays[displayId] }.getOrNull() ?: return null
         for (janela in janelas) {
             val pkg = pacoteDaJanela(janela) ?: continue
             if (AutoScanPolicy.isRideApp(pkg)) return pkg

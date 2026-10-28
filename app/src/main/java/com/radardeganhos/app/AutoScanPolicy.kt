@@ -34,10 +34,6 @@ object AutoScanPolicy {
         "com.nine"
     )
 
-    /** Mantidos por compatibilidade com quem já usava as listas. */
-    val UBER_PKGS = setOf("com.ubercab.driver", "com.ubercab", "com.ubercab.driver.lite")
-    val NINE_PKGS = setOf("com.taxis99", "com.taxis99.driver", "com.taxis99.passenger")
-
     fun isRideApp(pkg: String): Boolean {
         val p = pkg.lowercase()
         return RAIZES_CORRIDA.any { raiz -> p == raiz || p.startsWith("$raiz.") }

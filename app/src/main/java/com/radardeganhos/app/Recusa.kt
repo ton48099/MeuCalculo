@@ -126,8 +126,6 @@ object Recusa {
         return motivos
     }
 
-    fun deveRecusar(a: RideAnalysis, s: Settings): Boolean = motivos(a, s).isNotEmpty()
-
     /** Como o valor da corrida pode aparecer no texto da tela (com vírgula e com ponto). */
     fun formatosDoValor(valor: Double): List<String> =
         listOf(Report.num(valor), String.format(java.util.Locale.US, "%.2f", valor))
