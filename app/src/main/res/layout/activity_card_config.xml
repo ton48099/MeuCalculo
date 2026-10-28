@@ -120,6 +120,22 @@
                         android:text="Diagnóstico da leitura automática:"
                         android:textColor="@color/textDim"
                         android:textSize="12sp" />
+
+                    <!-- Provisório: copia o texto bruto do OCR + o que o app entendeu
+                         dele, para o motorista colar na conversa junto com a foto do
+                         card quando a leitura vier errada. -->
+                    <TextView
+                        android:id="@+id/btnCopiarLog"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_field"
+                        android:gravity="center"
+                        android:padding="12dp"
+                        android:text="COPIAR O QUE O OCR LEU (log)"
+                        android:textColor="@color/orange"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

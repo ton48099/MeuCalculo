@@ -1,5 +1,7 @@
 package com.radardeganhos.app
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -8,6 +10,7 @@ import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 /**
@@ -243,6 +246,22 @@ class CardConfigActivity : AppCompatActivity() {
             salvar()
             setResult(RESULT_OK)
             finish()
+        }
+
+        // Provisório: copia o log da última leitura (texto bruto do OCR + o que o app
+        // entendeu dele) para o motorista colar junto com a foto do card. Com os dois
+        // lado a lado dá para corrigir o parser sem adivinhar o formato.
+        findViewById<TextView>(R.id.btnCopiarLog).setOnClickListener {
+            val log = AutoDiag.montarLog(this)
+            val clipboard = getSystemService(ClipboardManager::class.java)
+            clipboard.setPrimaryClip(
+                ClipData.newPlainText("log de leitura do Radar", log)
+            )
+            Toast.makeText(
+                this,
+                "Log copiado — cole na conversa junto com a foto do card",
+                Toast.LENGTH_LONG
+            ).show()
         }
 
         findViewById<TextView>(R.id.btnVoltar).setOnClickListener { finish() }

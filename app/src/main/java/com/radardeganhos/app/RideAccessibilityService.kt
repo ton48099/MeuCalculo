@@ -1391,7 +1391,14 @@ class RideAccessibilityService : AccessibilityService() {
                 if (paraOcr !== pedaco.bmp) paraOcr.recycle()
             }
             val pkg = pedaco.pkg ?: pkgPadrao
-            val card = texto?.let { RideParser.parse(it, pkg) } ?: continue
+            if (texto.isNullOrBlank()) continue
+            // Guarda o texto bruto do OCR e o que deu para entender dele: é o que o
+            // botão "copiar log" da tela Card e Cores entrega para consertar o parser
+            // com o texto real na mão. Grava também quando NÃO achou card — aí o
+            // texto torto é exatamente o que precisa aparecer no log.
+            val card = RideParser.parse(texto, pkg)
+            AutoDiag.salvarLeitura(this, texto, pkg, card)
+            if (card == null) continue
             if (lidos.none { cardSignature(it.card) == cardSignature(card) }) {
                 lidos.add(CardLido(card, pkg, pedaco.janela))
             }

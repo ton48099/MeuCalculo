@@ -147,7 +147,7 @@ class LayoutInflationTest {
             R.id.txtKmBom, R.id.txtKmRuim, R.id.txtHoraBom, R.id.txtHoraRuim,
             R.id.txtMinutoBom, R.id.txtMinutoRuim,
             R.id.chkAutoScan, R.id.etAutoIntervalo, R.id.chkModoDesktop,
-            R.id.chkPrintCorrida, R.id.tvDiag,
+            R.id.chkPrintCorrida, R.id.tvDiag, R.id.btnCopiarLog,
             R.id.btnPosTopoEsquerda, R.id.btnPosTopoCentro,
             R.id.btnPosTopoDireita, R.id.btnPosCentro
         ).forEach { id -> assertNotNull(v.findViewById<View>(id)) }
