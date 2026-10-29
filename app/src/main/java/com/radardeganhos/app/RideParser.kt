@@ -335,6 +335,18 @@ object RideParser {
         )
 
         if (card.kmTotal < 0.2) return null
+        // Só considera corrida válida se tiver os DOIS endereços (origem e destino).
+        if (card.origem.isNullOrBlank() || card.destino.isNullOrBlank()) return null
+        // Mínimos para carro: nunca aceitar/identificar corrida abaixo desses valores.
+        val minTotalCard = card.minTotal
+        if (minTotalCard > 0.0) {
+            val brutoHora = card.valor / (minTotalCard / 60.0)
+            if (brutoHora < 25.0) return null
+        }
+        if (card.kmTotal > 0.0) {
+            val brutoKm = card.valor / card.kmTotal
+            if (brutoKm < 1.0) return null
+        }
         return card
     }
 

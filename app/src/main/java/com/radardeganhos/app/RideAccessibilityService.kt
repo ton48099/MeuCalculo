@@ -62,6 +62,8 @@ class RideAccessibilityService : AccessibilityService() {
 
     /** Tarefa da leitura automática agendada pelo tique. */
     private var autoScan: Runnable? = null
+    /** Tentativas rápidas quando não achou card válido (para garantir leitura). */
+    private var tentativasSemCard = 0
 
     private var scanning = false
     private var lastScanAt = 0L
@@ -1143,14 +1145,36 @@ class RideAccessibilityService : AccessibilityService() {
                     return@launch
                 }
                 if (cards.isEmpty()) {
-                    if (manual) overlay?.toast("Nenhum card de corrida nesta tela")
-                    else AutoDiag.anotar(
-                        this@RideAccessibilityService,
-                        "sem card em ${pkgLido ?: "?"}$nomeTela",
-                        forcar = true
-                    )
+                    if (manual) {
+                        overlay?.toast("Nenhum card de corrida nesta tela")
+                        tentativasSemCard = 0
+                    } else {
+                        tentativasSemCard++
+                        if (tentativasSemCard < 4) {
+                            // Tenta de novo rápido para garantir leitura mais precisa
+                            val settingsRetry = config ?: Prefs.load(this@RideAccessibilityService)
+                            val alvoRetry = alvo ?: resolverAlvo(settingsRetry)
+                            autoScan?.let { handler.removeCallbacks(it) }
+                            val tarefaRetry = Runnable { analyzeScreen(manual = false, config = settingsRetry, alvo = alvoRetry) }
+                            autoScan = tarefaRetry
+                            handler.postDelayed(tarefaRetry, 250L)
+                            AutoDiag.anotar(
+                                this@RideAccessibilityService,
+                                "sem card em ${pkgLido ?: "?"}$nomeTela (tentativa ${tentativasSemCard}/3)",
+                                forcar = tentativasSemCard == 1
+                            )
+                        } else {
+                            tentativasSemCard = 0
+                            AutoDiag.anotar(
+                                this@RideAccessibilityService,
+                                "sem card em ${pkgLido ?: "?"}$nomeTela",
+                                forcar = true
+                            )
+                        }
+                    }
                     return@launch
                 }
+                tentativasSemCard = 0
 
                 // Auto-análise não repete o mesmo conjunto de cards; a manual sempre responde.
                 val signature = cards.map { cardSignature(it) }.sorted().joinToString(",")
