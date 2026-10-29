@@ -267,3 +267,4 @@ Mantenha o mesmo keystore para atualizar o app no celular sem desinstalar.
 - Em apps com proteção de tela (`FLAG_SECURE`, típico de bancos) a captura vem preta — os cards do Uber/99 não usam essa proteção.
 - A qualidade do OCR depende da fonte e do zoom do card; em card muito pequeno, aproxime antes de tocar no R$.
 - O endereço no histórico depende do OCR manter o endereço em linha própria logo abaixo do tempo/distância — é o formato dos cards das suas capturas; num layout diferente, o campo aparece como "não identificado".
+

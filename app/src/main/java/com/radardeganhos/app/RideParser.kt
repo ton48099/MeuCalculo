@@ -335,8 +335,6 @@ object RideParser {
         )
 
         if (card.kmTotal < 0.2) return null
-        // Só considera corrida válida se tiver os DOIS endereços (origem e destino).
-        if (card.origem.isNullOrBlank() || card.destino.isNullOrBlank()) return null
         // Mínimos para carro: nunca aceitar/identificar corrida abaixo desses valores.
         val minTotalCard = card.minTotal
         if (minTotalCard > 0.0) {
