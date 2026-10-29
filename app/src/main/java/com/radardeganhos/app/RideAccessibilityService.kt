@@ -1145,33 +1145,13 @@ class RideAccessibilityService : AccessibilityService() {
                     return@launch
                 }
                 if (cards.isEmpty()) {
-                    if (manual) {
-                        overlay?.toast("Nenhum card de corrida nesta tela")
-                        tentativasSemCard = 0
-                    } else {
-                        tentativasSemCard++
-                        if (tentativasSemCard < 4) {
-                            // Tenta de novo rápido para garantir leitura mais precisa
-                            val settingsRetry = config ?: Prefs.load(this@RideAccessibilityService)
-                            val alvoRetry = alvo ?: resolverAlvo(settingsRetry)
-                            autoScan?.let { handler.removeCallbacks(it) }
-                            val tarefaRetry = Runnable { analyzeScreen(manual = false, config = settingsRetry, alvo = alvoRetry) }
-                            autoScan = tarefaRetry
-                            handler.postDelayed(tarefaRetry, 250L)
-                            AutoDiag.anotar(
-                                this@RideAccessibilityService,
-                                "sem card em ${pkgLido ?: "?"}$nomeTela (tentativa ${tentativasSemCard}/3)",
-                                forcar = tentativasSemCard == 1
-                            )
-                        } else {
-                            tentativasSemCard = 0
-                            AutoDiag.anotar(
-                                this@RideAccessibilityService,
-                                "sem card em ${pkgLido ?: "?"}$nomeTela",
-                                forcar = true
-                            )
-                        }
-                    }
+                    if (manual) overlay?.toast("Nenhum card de corrida nesta tela")
+                    else AutoDiag.anotar(
+                        this@RideAccessibilityService,
+                        "sem card em ${pkgLido ?: "?"}$nomeTela",
+                        forcar = true
+                    )
+                    tentativasSemCard = 0
                     return@launch
                 }
                 tentativasSemCard = 0
