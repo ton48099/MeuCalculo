@@ -130,6 +130,58 @@ object RideParser {
         return t.trim()
     }
 
+    /** Linha do botão que fecha o card ("Aceitar", "Aceitar por R$", "Tenho interesse"). */
+    private val gatilhoBotao = Regex(
+        """^(?:aceitar|aceito|tenho\s+interesse|tentar\s+novamente|tentando\s+encontrar|""" +
+            """deslize|arraste|confirmar|recusar|dispensar|ignorar|ver\s+detalhes|detalhes)\b""",
+        RegexOption.IGNORE_CASE
+    )
+
+    /**
+     * Corta o texto no botão de aceitar — o fim do card.
+     *
+     * É o mesmo papel do gatilho que o GigU usa por app: a leitura do card vai do topo
+     * até o botão, e não até o fim da tela. Só corta quando o valor já apareceu acima;
+     * num card em que o OCR leu só o botão ("Aceitar por R$ 10,22"), o texto fica
+     * inteiro para não perder a oferta.
+     */
+    fun cortarNoGatilho(raw: String): String {
+        val linhas = raw.split('\n')
+        val idx = linhas.indexOfFirst { gatilhoBotao.containsMatchIn(it.trim()) }
+        if (idx <= 0) return raw
+        val antes = linhas.subList(0, idx).joinToString("\n")
+        if (!moneyRegex.containsMatchIn(normalize(antes))) return raw
+        return antes
+    }
+
+    /** Marcadores de linha que só anotam dinheiro (não são o valor da oferta). */
+    private val marcadorAnotacao = Regex(
+        """\b(?:incl|inclu[ií]|inclus|tarifa|taxa|b[oô]nus|gorjeta|desconto|cupom|""" +
+            """por\s+km|por\s+embarque|por\s+corrida|deslocamento)\b|/\s*km\b""",
+        RegexOption.IGNORE_CASE
+    )
+
+    /**
+     * Valores que aparecem sozinhos numa linha de anotação: "R$3,40 Tarifa base dinâmica
+     * incl.", "R$1,70 por corrida longa incl.", "Taxa de deslocamento R$1,11".
+     *
+     * Linha com mais de um R$ fica de fora de propósito: nela o valor da oferta pode
+     * ter sido colado ao "est. de R$1,42/km" pelo OCR, e excluir a linha inteira
+     * apagaria a oferta.
+     */
+    fun valoresAnotados(raw: String): Set<Double> {
+        val fora = mutableSetOf<Double>()
+        for (linha in raw.split('\n')) {
+            val l = normalize(linha)
+            if (!marcadorAnotacao.containsMatchIn(l)) continue
+            val achados = moneyRegex.findAll(l)
+                .mapNotNull { NumberParse.toDouble(it.groupValues[1]) }
+                .toList()
+            if (achados.size == 1) fora.add(achados[0])
+        }
+        return fora
+    }
+
     fun detectApp(text: String, packageHint: String? = null): String? {
         val pkg = packageHint?.lowercase() ?: ""
         // O pacote é a pista mais confiável e vem primeiro. O 99 Motorista é
@@ -181,10 +233,19 @@ object RideParser {
         Regex("""\buber\s*black\b""") to "Black",
         Regex("""\buber\s*moto\b|\buber\s*moto""") to "Moto",
         Regex("""\bflash\b""") to "Flash",
-        Regex("""\bxl\b""") to "XL"
+        Regex("""\bxl\b""") to "XL",
+        Regex("""envios\s*carro""") to "Envíos Carro",
+        Regex("""\benvios?\b""") to "Envios",
+        Regex("""\bpriorit[aá]ri""") to "Prioritário",
+        Regex("""\bexclusiv""") to "Exclusivo"
     )
 
     private val categorias99 = listOf(
+        // Tags de modalidade que aparecem no badge, antes das categorias de carro.
+        Regex("""envios\s*carro""") to "Envíos Carro",
+        Regex("""\benvios?\b""") to "Envios",
+        Regex("""\bpriorit[aá]ri""") to "Prioritário",
+        Regex("""\bexclusiv""") to "Exclusivo",
         Regex("""99\s*negocia|\bnegocia""") to "Negocia",
         Regex("""99\s*pop|\bpop\b""") to "99Pop",
         Regex("""99\s*confort|\bconfort\b|\bcomfort\b""") to "Confort",
@@ -201,9 +262,13 @@ object RideParser {
      * O valor é o primeiro R$ do card (topo), não o maior da tela: a 99 lista ofertas
      * alternativas abaixo do card e o maior valor delas tomava o lugar do valor real.
      */
-    fun parse(raw: String, packageHint: String? = null): RideCard? {
+    fun parse(raw: String, packageHint: String? = null, aplicarMinimos: Boolean = true): RideCard? {
         if (raw.isBlank()) return null
-        val norm = normalize(raw)
+        // O card termina no botão de aceitar. Cortar ali deixa de fora o que vem
+        // embaixo dele — as ofertas alternativas da 99, o mapa, o texto do outro app —
+        // que é justamente onde o OCR pesca um "R$" ou um "km" que não é da oferta.
+        val doCard = cortarNoGatilho(raw)
+        val norm = normalize(doCard)
         val avisos = mutableListOf<String>()
 
         // 1) Preço por km informado pelo app não é distância — separa antes.
@@ -227,7 +292,7 @@ object RideParser {
         var minVia = 0.0
 
         // Endereços precisam das quebras de linha do texto original.
-        val enderecos = extractAddresses(raw)
+        val enderecos = extractAddresses(doCard)
 
         when {
             pares.size >= 2 -> {
@@ -311,11 +376,15 @@ object RideParser {
         // Antes era o MAIOR R$ do texto. No card da 99 que mostra ofertas alternativas
         // embaixo ("R$10,73  R$11,24  R$11,75") o maior virava o valor da corrida —
         // a conta e o veredito saíam errados a partir de R$ 11,75 em vez de R$ 10,22.
+        // R$ que só anotam dinheiro (bônus, tarifa dinâmica, taxa, "por km") não são
+        // a oferta: se o OCR perder a linha do valor, o R$ do bônus não pode virar o
+        // valor da corrida — sem valor de oferta, o card não é lido.
+        val anotados = valoresAnotados(doCard)
         val valores = moneyRegex.findAll(semPrecoKm)
             .mapNotNull { NumberParse.toDouble(it.groupValues[1]) }
             .filter { it >= 1.0 }
             .toList()
-        val valor = valores.firstOrNull() ?: return null
+        val valor = valores.firstOrNull { it !in anotados } ?: return null
 
         val app = detectApp(raw, packageHint)
         val card = RideCard(
@@ -335,18 +404,37 @@ object RideParser {
         )
 
         if (card.kmTotal < 0.2) return null
-        // Mínimos para carro: nunca aceitar/identificar corrida abaixo desses valores.
-        val minTotalCard = card.minTotal
-        if (minTotalCard > 0.0) {
-            val brutoHora = card.valor / (minTotalCard / 60.0)
-            if (brutoHora < 25.0) return null
-        }
-        if (card.kmTotal > 0.0) {
-            val brutoKm = card.valor / card.kmTotal
-            if (brutoKm < 1.0) return null
+        if (aplicarMinimos) {
+            // Piso de leitura para carro: card abaixo disto não vira corrida nenhuma.
+            // O piso é o card mais barato que ainda vale ler — o 99 Envíos Carro de
+            // R$ 10,03 (17 min/11,1 km de busca + 12 min/5,9 km de entrega) paga
+            // R$ 0,59/km e R$ 20,75/h. Quem paga menos que isso fica de fora.
+            if (card.minTotal > 0.0) {
+                val brutoHora = centavos(card.valor / (card.minTotal / 60.0))
+                if (brutoHora < PISO_HORA) return null
+            }
+            if (card.kmTotal > 0.0) {
+                val brutoKm = centavos(card.valor / card.kmTotal)
+                if (brutoKm < PISO_KM) return null
+            }
         }
         return card
     }
+
+    // ---- Piso de leitura ------------------------------------------------
+
+    /** R$/hora abaixo disto o card não é lido (ver o card de R$ 10,03 dos Envios Carro). */
+    private const val PISO_HORA = 20.7
+
+    /** R$/km abaixo disto o card não é lido. */
+    private const val PISO_KM = 0.59
+
+    /**
+     * Compara com o valor de duas casas que aparece na tela — assim o card que paga
+     * exatamente o piso (R$ 0,59/km) não cai por causa de arredondamento de ponto
+     * flutuante, do mesmo jeito que o semáforo faz em ColorRules.
+     */
+    private fun centavos(v: Double) = kotlin.math.round(v * 100.0) / 100.0
 
     // ---- Endereços (origem e destino) -------------------------------------
 
@@ -370,7 +458,12 @@ object RideParser {
         // linhas de oferta/aviso que às vezes ficam coladas ao trajeto no OCR
         "oferta", "tarifa", "dinâmica", "dinamica", "sugest", "vantagem",
         "surge", "promoção", "promocao", "desconto", "bônus", "bonus", "cupom",
-        "pague", "pagamento", "cartão", "cartao", "crédito", "credito", "débito", "debito"
+        "pague", "pagamento", "cartão", "cartao", "crédito", "credito", "débito", "debito",
+        // Barra do card, tags e botões: o que vem depois do trajeto não é endereço.
+        // "paradas" é o que separa os dois trechos do card do Uber com paradas — sem
+        // ele, "2 paradas" entrava colado no endereço de busca.
+        "paradas", "tentando", "encontrar", "interesse", "tenho", "deslize", "arraste",
+        "confirmar", "detalhes", "exclusiv", "priorit", "pgto", "verificado", "cpf"
     )
 
     private val viasDeEndereco = listOf(
@@ -399,8 +492,10 @@ object RideParser {
     // As regexes das listas acima ficam prontas uma única vez: elas eram recriadas
     // para CADA linha de CADA leitura (40+ paradas × 55+ vias), que era o maior
     // custo de CPU do parser com a leitura automática rodando de 2 em 2 segundos.
+    // O plural também para a linha ("2 paradas", "3 parada(s)"): sem o sufixo, a
+    // linha de paradas do Uber era aceita como continuação do endereço.
     private val paradaRegexes = paradasDeEndereco.map { p ->
-        Regex("""(?:^|[^a-z$])${Regex.escape(p)}(?:$|[^a-z])""")
+        Regex("""(?:^|[^a-z$])${Regex.escape(p)}(?:s|es)?(?:$|[^a-z])""")
     }
     private val viaRegexes = viasDeEndereco.map { v ->
         Regex("""(?:^|[^a-z])${Regex.escape(v)}(?:$|[^a-z])""")
@@ -474,7 +569,7 @@ object RideParser {
                 isAddressLine(baixa, original) ||
                     (partes.isEmpty() && isEnderecoPlausivel(baixa, original)) ||
                     (partes.isNotEmpty() && isContinuation(baixa, original)) -> {
-                    partes.add(original.trim().trimEnd(',', '-', '–').trim())
+                    partes.add(limparEndereco(original))
                     vazias = 0
                 }
                 partes.isEmpty() -> {
@@ -506,7 +601,7 @@ object RideParser {
             val ehEndereco = isAddressLine(baixa, l)
             val ehComplemento = partes.isNotEmpty() && isContinuation(baixa, l)
             if (ehEndereco || ehComplemento) {
-                partes.add(l.trim().trimEnd(',', '-', '–').trim())
+                partes.add(limparEndereco(l))
             } else {
                 fechar()
             }
@@ -514,6 +609,15 @@ object RideParser {
         fechar()
         return blocos
     }
+
+    /**
+     * Espaço antes da vírgula ("Rua Timbaúva, 36 , Restinga", como a 99 desenha) sai do
+     * endereço mostrado no card e no histórico.)
+     */
+    private val espacoAntesVirgula = Regex("""\s+,""")
+
+    private fun limparEndereco(s: String): String =
+        espacoAntesVirgula.replace(s.trim().trimEnd(',', '-', '–').trim(), ",")
 
     /** Endereço que o OCR colou na própria linha "tempo (km)", se houver. */
     private val ruidosDePar = Regex(

@@ -20,7 +20,7 @@ import org.robolectric.annotation.Config
  * (atributos obrigatórios, estilos, drawables e ids).
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33], qualifiers = "pt-rBR-w411dp-h891dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "pt-rBR-w411dp-h891dp-xxhdpi")
 class LayoutInflationTest {
 
     private fun themed(): Context {

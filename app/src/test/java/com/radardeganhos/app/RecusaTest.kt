@@ -28,7 +28,7 @@ import org.robolectric.annotation.Config
  * mostra; os mínimos numéricos continuam como ajuste fino.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33], qualifiers = "pt-rBR-w411dp-h891dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "pt-rBR-w411dp-h891dp-xxhdpi")
 class RecusaTest {
 
     // Uber X da captura: R$ 11,65 · 2 min (0,3 km) + 12 min (4,9 km) → 5,2 km e 14 min.

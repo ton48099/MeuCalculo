@@ -15,7 +15,7 @@ import org.robolectric.annotation.Config
  * para não virar um card só com os dois valores misturados.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33])
+@Config(sdk = [34])
 class DesktopLadoALadoTest {
 
     // Tela externa em paisagem: 1080 de altura, 2400 de largura.

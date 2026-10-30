@@ -23,7 +23,7 @@ import org.robolectric.annotation.Config
  * respeito da auto-análise às configurações.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33], qualifiers = "pt-rBR-w411dp-h891dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "pt-rBR-w411dp-h891dp-xxhdpi")
 class CardConfigTest {
 
     private fun themed(): Context {

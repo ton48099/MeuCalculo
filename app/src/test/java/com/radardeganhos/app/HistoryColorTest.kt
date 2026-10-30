@@ -21,7 +21,7 @@ import org.robolectric.annotation.Config
  * Semáforo de R$/hora e R$/km, endereços do card e histórico de corridas.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33], qualifiers = "pt-rBR-w411dp-h891dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "pt-rBR-w411dp-h891dp-xxhdpi")
 class HistoryColorTest {
 
     private fun themed(): Context {

@@ -534,4 +534,161 @@ class RideParserTest {
         assertEquals(18.0, c.minTotal, 0.001)
         assertEquals(1.05, c.valor / c.kmTotal, 0.01)
     }
+
+    // ---- fotos de 30/10: 99 Envíos Carro, UberX com paradas, Uber dinâmico e 99 Prioritário ----
+
+    private val enviosCarro99 = """
+        Envios Carro Exclusivo
+        R${'$'} 10,03
+        4,99 (103)
+        17 min (11.1 km)
+        Rua Treze de Maio, Esmeralda, Viamão
+        12 minutos (5.9 km)
+        Rua Arueira, 58, São Tomé, Viamão
+        Aceitar
+    """.trimIndent()
+
+    /**
+     * Foto 1 — 99 Envíos Carro: a busca é mais longa (17 min / 11,1 km) que a entrega
+     * (12 min / 5,9 km). Cada trecho tem de ficar no seu lugar e o badge "Envios Carro"
+     * tem de aparecer como categoria do card.
+     */
+    @Test
+    fun leEnviosCarroDa99ComBuscaMaiorQueAEntrega() {
+        val c = RideParser.parse(enviosCarro99, "com.app99.driver", aplicarMinimos = false)!!
+        assertEquals("99", c.app)
+        assertEquals("Envíos Carro", c.categoria)
+        assertEquals(10.03, c.valor, 0.001)
+        assertEquals(11.1, c.kmDeslocamento, 0.001)
+        assertEquals(17.0, c.minDeslocamento, 0.001)
+        assertEquals(5.9, c.kmViagem, 0.001)
+        assertEquals(12.0, c.minViagem, 0.001)
+        assertEquals(17.0, c.kmTotal, 0.001)
+        assertEquals("Rua Treze de Maio, Esmeralda, Viamão", c.origem)
+        assertEquals("Rua Arueira, 58, São Tomé, Viamão", c.destino)
+    }
+
+    /**
+     * Este card é o piso de leitura: R$ 10,03 por 17,0 km e 29 min dão R$ 0,59/km e
+     * R$ 20,75/h. Pagando exatamente o piso, o card ainda aparece.
+     */
+    @Test
+    fun enviosCarroNoPisoDeLeituraAindaViraCard() {
+        val c = RideParser.parse(enviosCarro99, "com.app99.driver")!!
+        assertEquals(10.03, c.valor, 0.001)
+        assertEquals(0.59, c.valor / c.kmTotal, 0.005)
+    }
+
+    /** Abaixo do piso (R$ 0,20/km e R$ 8,00/h) o card não aparece. */
+    @Test
+    fun ofertaAbaixoDoPisoDeLeituraNaoViraCard() {
+        assertNull(
+            RideParser.parse(
+                """
+                Corrida
+                R${'$'} 8,00
+                4,9 · 50 corridas
+                40 min (30 km)
+                Rua A, 10, Centro
+                60 min (10 km)
+                Rua B, 20, Centro
+                Aceitar
+                """.trimIndent(),
+                "com.app99.driver"
+            )
+        )
+    }
+
+    /** Foto 2 — UberX: "2 paradas" no meio do trajeto não pode entrar no endereço. */
+    @Test
+    fun paradasNoMeioDoTrajetoNaoEntramNoEndereco() {
+        val c = RideParser.parse(
+            """
+            UberX
+            R${'$'} 37,03
+            Est. de R${'$'}1,25/km
+            4,88 (1039)
+            4 min (1.6 km)
+            Av. João Corrêa, Bairro Centro, São Leopoldo
+            2 paradas
+            58 minutos (28.1 km)
+            R. Prof. Stumpf, 183, Vicentina, São Leopoldo
+            Viagem longa (mais de 30 min)
+            Tenho interesse
+            """.trimIndent(),
+            "com.ubercab.driver"
+        )!!
+        assertEquals("Av. João Corrêa, Bairro Centro, São Leopoldo", c.origem)
+        assertEquals("R. Prof. Stumpf, 183, Vicentina, São Leopoldo", c.destino)
+    }
+
+    /**
+     * Foto 3 — Uber no tema escuro: a tarifa dinâmica ("R$3,40 … incl.") fica logo
+     * abaixo do valor e já está dentro dele. O botão "Tentando encontrar (2s)" fecha o
+     * card — o texto dele não é endereço.
+     */
+    @Test
+    fun tarifaDinamicaNaoViraValorENaoEntraNoEndereco() {
+        val c = RideParser.parse(
+            """
+            R${'$'}10,20
+            R${'$'}3,40 Tarifa base dinâmica incl.
+            4,88 · 108 corridas
+            CPF verif.
+            9 min (2,5 km)
+            Rua Passo da Pátria, 515 , Bela Vista
+            15 min (5,5 km)
+            Estação de Metrô Mercado, Avenida Mauá, Centro Histórico, Porto Alegre
+            Tentando encontrar (2s)
+            """.trimIndent(),
+            "com.ubercab.driver"
+        )!!
+        assertEquals(10.20, c.valor, 0.001)
+        assertEquals(2.5, c.kmDeslocamento, 0.001)
+        assertEquals(9.0, c.minDeslocamento, 0.001)
+        assertEquals(5.5, c.kmViagem, 0.001)
+        assertEquals(15.0, c.minViagem, 0.001)
+        assertEquals("Estação de Metrô Mercado, Avenida Mauá, Centro Histórico, Porto Alegre", c.destino)
+    }
+
+    /** Sem a linha do valor, o R$ do bônus não pode virar a oferta. */
+    @Test
+    fun bonusSozinhoNaoViraValorDaCorrida() {
+        assertNull(
+            RideParser.parse(
+                "R${'$'}3,40 Tarifa base dinâmica incl. 9 min (2,5 km) Rua Passo da Pátria, 515, Bela Vista",
+                "com.ubercab.driver",
+                aplicarMinimos = false
+            )
+        )
+    }
+
+    /** Foto 4 — 99 Prioritário: "R$1,70 por corrida longa incl." é acréscimo já incluso. */
+    @Test
+    fun leCardPrioritarioDa99SemLerOBonusComoValor() {
+        val c = RideParser.parse(
+            """
+            Pgto. no app Prioritário
+            R${'$'}22,00
+            R${'$'}1,70 por corrida longa incl.
+            4,82 · 358 corridas
+            Perfil Essencial
+            7 min (1,6 km)
+            Rua Dr. Sebastião Leão, 151, Azenha
+            31 min (15,7 km)
+            Rua Timbaúva, 36 , Restinga
+            Aceitar
+            """.trimIndent(),
+            "com.app99.driver"
+        )!!
+        assertEquals("99", c.app)
+        assertEquals("Prioritário", c.categoria)
+        assertEquals(22.00, c.valor, 0.001)
+        assertEquals(1.6, c.kmDeslocamento, 0.001)
+        assertEquals(7.0, c.minDeslocamento, 0.001)
+        assertEquals(15.7, c.kmViagem, 0.001)
+        assertEquals(31.0, c.minViagem, 0.001)
+        assertEquals("Rua Dr. Sebastião Leão, 151, Azenha", c.origem)
+        assertEquals("Rua Timbaúva, 36, Restinga", c.destino)
+    }
 }

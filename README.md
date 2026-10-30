@@ -240,6 +240,19 @@ alternativas embaixo (`R$10,73  R$11,24  R$11,75`) e o maior delas tomava o luga
 também é identificado pelo pacote, então o **99 Motorista** (`com.app99.driver`) aparece como `99` — antes
 saía “app não identificado” porque o card dele não tem a palavra “99”.
 
+O card é lido **até o botão de aceitar** (`Aceitar`, `Aceitar por R$…`, `Tenho interesse`, `Tentar
+novamente`, `Tentando encontrar (2s)`): o que vem depois dele — as ofertas alternativas da 99, o mapa, o
+texto do outro app — não entra na conta. Linhas que só **anotam** dinheiro (`R$3,40 Tarifa base dinâmica
+incl.`, `R$1,70 por corrida longa incl.`, `Taxa de deslocamento R$1,11`, `Est. de R$1,25/km`) nunca viram o
+valor da oferta: sem o valor de verdade no texto, o card não é lido — melhor nada do que uma corrida falsa
+de R$ 3,40. As tags do topo viram a categoria do cabeçalho (`UberX`, `Confort`, `99Pop`, `Negocia`,
+`Envíos Carro`, `Prioritário`, `Exclusivo`) e linhas de apoio (`2 paradas`, `CPF verif.`, `Perfil
+Essencial`) não entram no endereço.
+
+Um card lido ainda pode ser descartado por pagar pouco: o piso é **R$ 0,59/km e R$ 20,75/h**, o valor do
+Envios Carro mais barato já visto (R$ 10,03 por 17 km e 29 min). Abaixo do piso em qualquer um dos dois não
+aparece card nenhum — melhor nada do que uma corrida que não paga a viagem.
+
 ## Privacidade
 
 O OCR é o ML Kit embarcado, roda no próprio aparelho. O app não tem servidor e não envia texto para
@@ -252,7 +265,7 @@ Requisitos: JDK 17, Android SDK 34 (o wrapper usa Gradle 9.6).
 
 ```bash
 ./gradlew :app:assembleRelease      # gera app/build/outputs/apk/release/app-release.apk
-./gradlew :app:testDebugUnitTest    # 112 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, recusa automática (só veredito RUIM de fábrica, critérios opcionais, escolha do X, contagem, X ensinado à mão por tela), valor do topo do card e 99 Motorista identificada pelo pacote
+./gradlew :app:testDebugUnitTest    # 127 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, recusa automática (só veredito RUIM de fábrica, critérios opcionais, escolha do X, contagem, X ensinado à mão por tela), valor do topo do card e 99 Motorista identificada pelo pacote
 ```
 
 Se o Android Studio estiver instalado, o JDK dele serve (`C:\Program Files\Android\Android Studio\jbr`);

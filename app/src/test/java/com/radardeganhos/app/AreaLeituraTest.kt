@@ -19,7 +19,11 @@ import org.robolectric.annotation.Config
  * troca desses padrões em quem já tem o app instalado.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33], qualifiers = "pt-rBR-w411dp-h891dp-xxhdpi")
+// API 34 como todas as classes de teste: o jar do Robolectric para a 13
+// (android-all-instrumented-13) não tem a classe BluetoothDevice$BluetoothAddress, e ao
+// construir a Activity de configurações o ShadowWrangler morre com NoClassDefFoundError
+// ao varrer os métodos do BluetoothDevice. No jar da 14 a classe existe e o teste passa.
+@Config(sdk = [34], qualifiers = "pt-rBR-w411dp-h891dp-xxhdpi")
 class AreaLeituraTest {
 
     // Tela de 2400 px de altura, card de 600 px preso no topo começando em 100 px.

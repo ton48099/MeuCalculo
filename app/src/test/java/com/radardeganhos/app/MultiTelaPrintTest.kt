@@ -21,7 +21,7 @@ import org.robolectric.annotation.Config
  *  - o print da corrida salvo e exibido no histórico.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33], qualifiers = "pt-rBR-w411dp-h891dp-xxhdpi")
+@Config(sdk = [34], qualifiers = "pt-rBR-w411dp-h891dp-xxhdpi")
 class MultiTelaPrintTest {
 
     private val ctx: Context

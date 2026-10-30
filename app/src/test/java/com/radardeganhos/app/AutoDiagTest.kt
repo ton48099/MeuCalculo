@@ -14,7 +14,7 @@ import org.robolectric.annotation.Config
  * entendeu dele, lado a lado — é comparando os dois que o erro aparece.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33])
+@Config(sdk = [34])
 class AutoDiagTest {
 
     private val ctx: Context
