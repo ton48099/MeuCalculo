@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Contêiner das abas: Home (calculadora), Config e Histórico. As duas primeiras
+  vivem aqui dentro; o Histórico é uma tela própria (tem lista, prints e limpeza).
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -6,240 +10,25 @@
     android:background="@color/bg"
     android:orientation="vertical">
 
-    <!-- Header -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp"
-        android:paddingTop="10dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Radar de Ganhos"
-            android:textColor="@color/text"
-            android:textSize="32sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="Quanto sua corrida realmente paga por hora e por km?"
-            android:textColor="@color/textDim"
-            android:textSize="15sp" />
-    </LinearLayout>
-
-    <!-- Cards principais (estilo DSW) -->
-    <ScrollView
+    <FrameLayout
+        android:id="@+id/conteudoAbas"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:fillViewport="true">
+        android:layout_weight="1">
 
-        <LinearLayout
+        <include
+            android:id="@+id/tabHome"
+            layout="@layout/tab_home"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:layout_height="match_parent" />
 
-            <!-- Botão ativar/desativar -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnToggleLeitura"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
-                android:backgroundTint="@color/orange"
-                android:text="▶ ATIVAR LEITURA DE TELA"
-                android:textColor="@color/text"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:padding="16dp"
-                app:cornerRadius="12dp" />
+        <include
+            android:id="@+id/tabConfig"
+            layout="@layout/tab_config"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </FrameLayout>
 
-            <!-- Liga/desliga a recusa automática sem entrar nas configurações -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnRecusa"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
-                android:backgroundTint="@color/surface2"
-                android:text="🚫 RECUSA SOZINHO: LIGADA"
-                android:textColor="@color/text"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:padding="13dp"
-                app:cornerRadius="12dp"
-                app:strokeColor="@color/orange"
-                app:strokeWidth="1dp" />
-
-            <!-- Ensina a posição do X arrastando uma mira até o botão do Uber/99 -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnEnsinaX"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:backgroundTint="@color/surface2"
-                android:text="🎯 ENSINAR ONDE FICA O X"
-                android:textColor="@color/yellow"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:padding="13dp"
-                app:cornerRadius="12dp"
-                app:strokeColor="@color/yellow"
-                app:strokeWidth="1dp" />
-
-            <!-- Card: Custos -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp"
-                app:strokeColor="@color/stroke"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="18dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="1 · CUSTOS DO SEU CARRO"
-                        android:textColor="@color/orange"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="Preço do litro, consumo, manutenção, comissão, aluguel, espera e metas."
-                        android:textColor="@color/textDim"
-                        android:textSize="14sp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnCustos"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:backgroundTint="@color/surface2"
-                        android:text="Abrir Custos"
-                        android:textColor="@color/text"
-                        android:textSize="15sp"
-                        android:textStyle="bold"
-                        android:padding="14dp"
-                        app:cornerRadius="10dp"
-                        app:strokeColor="@color/stroke"
-                        app:strokeWidth="1dp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Card: Card e Cores -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp"
-                app:strokeColor="@color/stroke"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="18dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="2 · CARD E CORES"
-                        android:textColor="@color/orange"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="Leitura automática e modo desktop, tempo na tela, posição do card, itens visíveis e limites do semáforo."
-                        android:textColor="@color/textDim"
-                        android:textSize="14sp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnCardConfig"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
-                        android:backgroundTint="@color/surface2"
-                        android:text="Abrir Card e Cores"
-                        android:textColor="@color/text"
-                        android:textSize="15sp"
-                        android:textStyle="bold"
-                        android:padding="14dp"
-                        app:cornerRadius="10dp"
-                        app:strokeColor="@color/stroke"
-                        app:strokeWidth="1dp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Status -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="1dp"
-                app:strokeColor="@color/stroke"
-                app:strokeWidth="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="STATUS"
-                        android:textColor="@color/textDim"
-                        android:textSize="11sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvStatus"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="Serviço desativado."
-                        android:textColor="@color/textDim"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="Toque em ATIVAR LEITURA DE TELA acima."
-                        android:textColor="@color/textDim"
-                        android:textSize="12sp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="24dp" />
-        </LinearLayout>
-    </ScrollView>
-
-    <!-- Bottom Navigation -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"

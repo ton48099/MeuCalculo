@@ -691,4 +691,59 @@ class RideParserTest {
         assertEquals("Rua Dr. Sebastião Leão, 151, Azenha", c.origem)
         assertEquals("Rua Timbaúva, 36, Restinga", c.destino)
     }
+
+    /**
+     * Foto 5 — UberX Exclusivo de R$ 118,89 com "1 h e 19 min (71.7 km)".
+     *
+     * O bug: a corrida entrava como 9 min (ou 19 min) e o R$/hora saía absurdo
+     * (R$ 793/h numa corrida que paga R$ 86/h). O tempo agora é lido inteiro.
+     */
+    private fun cardDeUmaHoraE19(tempoDaViagem: String) = """
+        UberX Exclusivo
+        R${'$'} 118,89
+        Est. de R${'$'}1,63/km
+        4,92 (229)
+        +10% de ganhos Uber Pro
+        4 min (1.3 km)
+        Rua José Rodrigues, Cachoeirinha, Cachoeirinha
+        $tempoDaViagem
+        Rua Luiz Volkart, 478, Centro, Três Coroas
+        Viagem longa (mais de 30 min)
+        Aceitar
+    """.trimIndent()
+
+    @Test
+    fun leCorridaDeUmaHoraE19Minutos() {
+        val c = RideParser.parse(cardDeUmaHoraE19("1 h e 19 min (71.7 km)"), "com.ubercab.driver")!!
+        assertEquals("Uber", c.app)
+        assertEquals("UberX", c.categoria)
+        assertEquals(118.89, c.valor, 0.001)
+        assertEquals(1.3, c.kmDeslocamento, 0.001)
+        assertEquals(4.0, c.minDeslocamento, 0.001)
+        assertEquals(71.7, c.kmViagem, 0.001)
+        assertEquals(79.0, c.minViagem, 0.001)
+        assertEquals(83.0, c.minTotal, 0.001)
+        assertNotNull(c.origem)
+        assertNotNull(c.destino)
+    }
+
+    /** O mesmo card com o que o OCR devolve de verdade, variação por variação. */
+    @Test
+    fun umaHoraE19SobreviveAoOcr() {
+        listOf(
+            "1 h e 19 min (71.7 km)",
+            "1h19min (71.7 km)",
+            "1h 19min (71,7 km)",
+            "lh e 19 min (71.7 km)",
+            "1 h e l9 min (71.7 km)",
+            "1 h e 1 9 min (71.7 km)",
+            "1 hora e 19 minutos (71.7 km)",
+            "1h19 (71.7 km)"
+        ).forEach { linha ->
+            val c = RideParser.parse(cardDeUmaHoraE19(linha), "com.ubercab.driver")
+            assertNotNull("não leu o card com \"$linha\"", c)
+            assertEquals("tempo da viagem com \"$linha\"", 79.0, c!!.minViagem, 0.001)
+            assertEquals("deslocamento com \"$linha\"", 4.0, c.minDeslocamento, 0.001)
+        }
+    }
 }

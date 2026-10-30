@@ -1,0 +1,1103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Aba Home: a calculadora do plantão (o que entrou, o que saiu e o que sobrou).
+  Estilo preto e laranja do Radar; as funções seguem a calculadora que o dono
+  desenhou no Google AI Studio: saldo, ganhos por app, km, horas e custos.
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Radar de Ganhos"
+            android:textColor="@color/text"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="O plantão de hoje: quanto entrou, quanto custou e quanto sobrou."
+            android:textColor="@color/textDim"
+            android:textSize="13sp" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp"
+            app:strokeColor="@color/orange"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    style="@style/Secao"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SALDO LÍQUIDO NO BOLSO" />
+
+                <TextView
+                    android:id="@+id/tvSaldo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="R$ 0,00"
+                    android:textColor="@color/orange"
+                    android:textSize="34sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    style="@style/Dica"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Livre de combustível, manutenção e outros gastos." />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSalvarPlantao"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:backgroundTint="@color/surface2"
+                    android:padding="12dp"
+                    android:text="Salvar plantão"
+                    android:textColor="@color/text"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="10dp"
+                    app:strokeColor="@color/stroke"
+                    app:strokeWidth="1dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="5dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Dica"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="📈 TOTAL BRUTO" />
+
+                        <TextView
+                            android:id="@+id/tvBruto"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="R$ 0,00"
+                            android:textColor="@color/text"
+                            android:textSize="17sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="5dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Dica"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="💸 TOTAL DE DESPESAS" />
+
+                        <TextView
+                            android:id="@+id/tvDespesas"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="R$ 0,00"
+                            android:textColor="@color/red"
+                            android:textSize="17sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="1dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="5dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/RotuloHome"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Ganho por KM" />
+
+                    <TextView
+                        android:id="@+id/tvGanhoKm"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Não calculado"
+                        android:textColor="@color/textDim"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        style="@style/Dica"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Preencha os km abaixo." />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="5dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/RotuloHome"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Ganho por Hora" />
+
+                    <TextView
+                        android:id="@+id/tvGanhoHora"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Não calculado"
+                        android:textColor="@color/textDim"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        style="@style/Dica"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Informe começo e fim (ou ligue o ao vivo)." />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="1dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/RotuloHome"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="💰 Faturamento bruto por app"
+                        android:textSize="15sp" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Dica"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="TOTAL BRUTO" />
+
+                        <TextView
+                            android:id="@+id/tvBrutoApps"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="R$ 0,00"
+                            android:textColor="@color/orange"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <TextView
+                    style="@style/Dica"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Digite o valor e use os botões para somar rápido." />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            style="@style/RotuloHome"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="🟡 99 (Pop / Confort)" />
+
+                        <TextView
+                            android:id="@+id/mais99_10"
+                            style="@style/ChipHome"
+                            android:layout_marginStart="6dp"
+                            android:text="+10" />
+
+                        <TextView
+                            android:id="@+id/mais99_20"
+                            style="@style/ChipHome"
+                            android:layout_marginStart="6dp"
+                            android:text="+20" />
+
+                        <TextView
+                            android:id="@+id/mais99_50"
+                            style="@style/ChipHome"
+                            android:layout_marginStart="6dp"
+                            android:text="+50" />
+                    </LinearLayout>
+
+                    <EditText
+                        android:id="@+id/etGanho99"
+                        style="@style/CampoHome"
+                        android:hint="R$ 0,00" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            style="@style/RotuloHome"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="⚫ Uber (X / Confort)" />
+
+                        <TextView
+                            android:id="@+id/maisUber_10"
+                            style="@style/ChipHome"
+                            android:layout_marginStart="6dp"
+                            android:text="+10" />
+
+                        <TextView
+                            android:id="@+id/maisUber_20"
+                            style="@style/ChipHome"
+                            android:layout_marginStart="6dp"
+                            android:text="+20" />
+
+                        <TextView
+                            android:id="@+id/maisUber_50"
+                            style="@style/ChipHome"
+                            android:layout_marginStart="6dp"
+                            android:text="+50" />
+                    </LinearLayout>
+
+                    <EditText
+                        android:id="@+id/etGanhoUber"
+                        style="@style/CampoHome"
+                        android:hint="R$ 0,00" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            style="@style/RotuloHome"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="🟢 inDrive" />
+
+                        <TextView
+                            android:id="@+id/maisInDrive_10"
+                            style="@style/ChipHome"
+                            android:layout_marginStart="6dp"
+                            android:text="+10" />
+
+                        <TextView
+                            android:id="@+id/maisInDrive_20"
+                            style="@style/ChipHome"
+                            android:layout_marginStart="6dp"
+                            android:text="+20" />
+
+                        <TextView
+                            android:id="@+id/maisInDrive_50"
+                            style="@style/ChipHome"
+                            android:layout_marginStart="6dp"
+                            android:text="+50" />
+                    </LinearLayout>
+
+                    <EditText
+                        android:id="@+id/etGanhoInDrive"
+                        style="@style/CampoHome"
+                        android:hint="R$ 0,00" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            style="@style/RotuloHome"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="💜 Gorjetas / Particular" />
+
+                        <TextView
+                            android:id="@+id/maisGorjetas_10"
+                            style="@style/ChipHome"
+                            android:layout_marginStart="6dp"
+                            android:text="+10" />
+
+                        <TextView
+                            android:id="@+id/maisGorjetas_20"
+                            style="@style/ChipHome"
+                            android:layout_marginStart="6dp"
+                            android:text="+20" />
+
+                        <TextView
+                            android:id="@+id/maisGorjetas_50"
+                            style="@style/ChipHome"
+                            android:layout_marginStart="6dp"
+                            android:text="+50" />
+                    </LinearLayout>
+
+                    <EditText
+                        android:id="@+id/etGanhoGorjetas"
+                        style="@style/CampoHome"
+                        android:hint="R$ 0,00" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="1dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/RotuloHome"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="🧭 Quilômetros rodados (KM)"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        style="@style/Dica"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Opcional" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/Dica"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Total de km rodados entre saídas, corridas e voltas." />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <EditText
+                        android:id="@+id/etKm"
+                        style="@style/CampoHome"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:hint="Ex.: 140" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/bg_field"
+                        android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="KM"
+                        android:textColor="@color/textDim"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/maisKm_10"
+                        style="@style/ChipHome"
+                        android:text="+10 km" />
+
+                    <TextView
+                        android:id="@+id/maisKm_25"
+                        style="@style/ChipHome"
+                        android:layout_marginStart="8dp"
+                        android:text="+25 km" />
+
+                    <TextView
+                        android:id="@+id/maisKm_50"
+                        style="@style/ChipHome"
+                        android:layout_marginStart="8dp"
+                        android:text="+50 km" />
+
+                    <TextView
+                        android:id="@+id/maisKm_100"
+                        style="@style/ChipHome"
+                        android:layout_marginStart="8dp"
+                        android:text="+100 km" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvDicaKm"
+                    style="@style/Dica"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Sem KM informado o app não calcula valor por km nem os gastos de combustível e manutenção." />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="1dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/RotuloHome"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="⏱ Horas trabalhadas e ritmo"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        style="@style/Dica"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Opcional" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_field"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <TextView
+                        style="@style/Dica"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Horário oficial de Brasília: " />
+
+                    <TextView
+                        android:id="@+id/tvHoraBrasilia"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--:--"
+                        android:textColor="@color/text"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSincronizarFim"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:backgroundTint="@color/surface2"
+                    android:padding="10dp"
+                    android:text="⏱ Sincronizar término agora"
+                    android:textColor="@color/orange"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="10dp"
+                    app:strokeColor="@color/orange"
+                    app:strokeWidth="1dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/RotuloHome"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Hora que comecei" />
+
+                    <TextView
+                        android:id="@+id/btnComecarAgora"
+                        style="@style/ChipHome"
+                        android:text="Começar agora" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvInicio"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/bg_field"
+                    android:gravity="center_vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="--:--"
+                    android:textColor="@color/text"
+                    android:textSize="15sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/RotuloHome"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Hora que acabei" />
+
+                    <TextView
+                        android:id="@+id/btnAcabarAgora"
+                        style="@style/ChipHome"
+                        android:text="Agora" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvFim"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="6dp"
+                    android:background="@drawable/bg_field"
+                    android:gravity="center_vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="--:--"
+                    android:textColor="@color/text"
+                    android:textSize="15sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_field"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/RotuloHome"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="⚡ Ainda estou rodando (ao vivo)" />
+
+                        <TextView
+                            style="@style/Dica"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="O tempo acompanha o relógio, do começo até agora." />
+                    </LinearLayout>
+
+                    <!-- Switch do framework, de propósito: o MaterialSwitch (SwitchCompat)
+                         estoura com NullPointerException no Robolectric ao medir sem texto. -->
+                    <Switch
+                        android:id="@+id/swAoVivo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:thumbTint="@color/orange"
+                        android:trackTint="@color/stroke" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvInfoHoras"
+                    style="@style/Dica"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Sem horários definidos: o ganho por hora não é calculado. Defina quando começou e terminou — ou ligue o ao vivo." />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="1dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/RotuloHome"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="⛽ Custos do veículo e despesas"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            style="@style/Dica"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Descontados automaticamente do lucro do dia." />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/Dica"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="TOTAL CUSTOS" />
+
+                        <TextView
+                            android:id="@+id/tvTotalCustos"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="R$ 0,00"
+                            android:textColor="@color/yellow"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <TextView
+                    style="@style/RotuloHome"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="Combustível" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/btnGasolina"
+                        style="@style/ChipHome"
+                        android:text="Gasolina" />
+
+                    <TextView
+                        android:id="@+id/btnAlcool"
+                        style="@style/ChipHome"
+                        android:layout_marginStart="8dp"
+                        android:text="Álcool" />
+
+                    <TextView
+                        android:id="@+id/btnGnv"
+                        style="@style/ChipHome"
+                        android:layout_marginStart="8dp"
+                        android:text="GNV" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/Dica"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Preço do litro (R$)" />
+
+                <EditText
+                    android:id="@+id/etPrecoLitro"
+                    style="@style/CampoHome"
+                    android:hint="Ex.: 5,89" />
+
+                <TextView
+                    style="@style/Dica"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Consumo do carro (KM/L)" />
+
+                <EditText
+                    android:id="@+id/etConsumo"
+                    style="@style/CampoHome"
+                    android:hint="Ex.: 10" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Dica"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Reserva de manutenção por KM" />
+
+                    <TextView
+                        style="@style/Dica"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Padrão sugerido" />
+                </LinearLayout>
+
+                <EditText
+                    android:id="@+id/etManut"
+                    style="@style/CampoHome"
+                    android:hint="Ex.: 0,25" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/btnRestaurarManut"
+                        style="@style/ChipHome"
+                        android:text="Restaurar R$ 0,25" />
+
+                    <TextView
+                        android:id="@+id/btnZerarManut"
+                        style="@style/ChipHome"
+                        android:layout_marginStart="8dp"
+                        android:text="Zerar" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/Dica"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Padrão de R$ 0,25/km cobre óleo, pneus, pastilhas e alinhamento, para você não ser pego de surpresa na oficina." />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_field"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/RotuloHome"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🍔 Outros gastos" />
+
+                        <TextView
+                            style="@style/Dica"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Alimentação, pedágio, lava-jato." />
+                    </LinearLayout>
+
+                    <EditText
+                        android:id="@+id/etOutros"
+                        android:layout_width="110dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="10dp"
+                        android:background="@drawable/bg_field"
+                        android:hint="R$ 0,00"
+                        android:inputType="numberDecimal"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:textColor="@color/text"
+                        android:textColorHint="@color/textDim"
+                        android:textSize="15sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvDetalheCustos"
+                    style="@style/Dica"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Combustível R$ 0,00 · manutenção R$ 0,00 · outros R$ 0,00" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="1dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/RotuloHome"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🎯 Meta de lucro líquido do dia"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            style="@style/Dica"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Acompanhe quanto falta para fechar a conta do dia." />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/btnAlterarMeta"
+                        style="@style/ChipHome"
+                        android:text="Alterar meta" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tvMeta"
+                        style="@style/RotuloHome"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Meta: R$ 300,00" />
+
+                    <TextView
+                        android:id="@+id/tvFaltaMeta"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Falta R$ 300,00 (0%)"
+                        android:textColor="@color/textDim"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <ProgressBar
+                    android:id="@+id/pbMeta"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
+                    android:layout_marginTop="10dp"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressBackgroundTint="@color/stroke"
+                    android:progressTint="@color/orange" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="1dp"
+            app:strokeColor="@color/stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    style="@style/RotuloHome"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📚 Plantões salvos"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/tvSemPlantoes"
+                    style="@style/Dica"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Nenhum plantão salvo ainda. Toque em SALVAR PLANTÃO para guardar o dia — amanhã ele começa zerado." />
+
+                <LinearLayout
+                    android:id="@+id/listaPlantoes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <Space
+            android:layout_width="match_parent"
+            android:layout_height="20dp" />
+    </LinearLayout>
+</ScrollView>

@@ -11,8 +11,8 @@ android {
         applicationId = "com.radardeganhos.app"
         minSdk = 30
         targetSdk = 34
-        versionCode = 24
-        versionName = "1.23"
+        versionCode = 25
+        versionName = "1.24"
     }
 
     signingConfigs {

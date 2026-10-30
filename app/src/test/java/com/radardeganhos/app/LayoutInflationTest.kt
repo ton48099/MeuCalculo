@@ -51,6 +51,36 @@ class LayoutInflationTest {
         assertTrue(textos.any { it.contains("2 · CARD E CORES") })
     }
 
+    /** Aba Home: a calculadora do plantão infla com todos os campos que ela usa. */
+    @Test
+    fun inflaAbaHomeComACalculadora() {
+        val v = LayoutInflater.from(themed()).inflate(R.layout.tab_home, null)
+        listOf(
+            R.id.tvSaldo, R.id.tvBruto, R.id.tvDespesas, R.id.tvBrutoApps,
+            R.id.tvGanhoKm, R.id.tvGanhoHora, R.id.tvTotalCustos, R.id.tvDetalheCustos,
+            R.id.etGanho99, R.id.etGanhoUber, R.id.etGanhoInDrive, R.id.etGanhoGorjetas,
+            R.id.etKm, R.id.maisKm_10, R.id.maisKm_25, R.id.maisKm_50, R.id.maisKm_100,
+            R.id.mais99_10, R.id.maisUber_20, R.id.maisInDrive_50, R.id.maisGorjetas_10,
+            R.id.tvHoraBrasilia, R.id.tvInicio, R.id.tvFim, R.id.swAoVivo, R.id.tvInfoHoras,
+            R.id.btnComecarAgora, R.id.btnAcabarAgora, R.id.btnSincronizarFim,
+            R.id.btnGasolina, R.id.btnAlcool, R.id.btnGnv,
+            R.id.etPrecoLitro, R.id.etConsumo, R.id.etManut, R.id.etOutros,
+            R.id.btnRestaurarManut, R.id.btnZerarManut,
+            R.id.tvMeta, R.id.tvFaltaMeta, R.id.pbMeta, R.id.btnAlterarMeta,
+            R.id.btnSalvarPlantao, R.id.listaPlantoes, R.id.tvSemPlantoes
+        ).forEach { id -> assertNotNull("faltou o id $id na aba Home", v.findViewById<View>(id)) }
+    }
+
+    /** Aba Config: os mesmos comandos da antiga tela principal. */
+    @Test
+    fun inflaAbaConfigComOsComandos() {
+        val v = LayoutInflater.from(themed()).inflate(R.layout.tab_config, null)
+        listOf(
+            R.id.btnToggleLeitura, R.id.btnRecusa, R.id.btnEnsinaX,
+            R.id.btnCustos, R.id.btnCardConfig, R.id.tvStatus
+        ).forEach { id -> assertNotNull("faltou o id $id na aba Config", v.findViewById<View>(id)) }
+    }
+
     @Test
     fun inflaTelaDeHistoricoEUmItem() {
         val v = LayoutInflater.from(themed()).inflate(R.layout.activity_history, null)

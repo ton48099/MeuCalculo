@@ -6,7 +6,7 @@ App Android que lê o card de corrida do **Uber** e da **99** em qualquer tela (
 
 ```
 pacote: com.radardeganhos.app
-versão: 1.23 (versionCode 24)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
+versão: 1.24 (versionCode 25)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
 ```
 
 O APK sai do próprio Android Studio (aba **Build › Build App Bundle(s) / APK(s) › Build APK(s)**)
@@ -50,14 +50,40 @@ e o `.cmd` já contorna isso sem mudar configuração do sistema.
 
 ## Telas
 
-O app tem menu inferior com **Início** e **Histórico**; na Início:
+O app abre na **Home** e tem menu inferior com três abas: **Home**, **Config** e **Histórico**.
 
-| Seção | O que tem |
+| Aba | O que tem |
 |---|---|
-| botão grande no topo | **ATIVAR / DESLIGAR** a leitura (ligação imediata) |
-| **1 · CUSTOS** | preço do litro, consumo, manutenção, comissão, aluguel, espera, retorno e metas |
-| **2 · CARD E CORES** | **leitura automática** (liga/desliga, intervalo, modo desktop, print e diagnóstico), duração na tela, **posição**, opacidade, tamanho da fonte, empilhar, itens visíveis, limites do semáforo e **recusar sozinho (o X)** |
-| **STATUS** | se o serviço está ativo |
+| **Home** | a **calculadora do plantão**: saldo líquido do dia, ganho por km e por hora, faturamento por app (99, Uber, inDrive, gorjetas/particular), km rodados, horas trabalhadas, custos do veículo, meta do dia e plantões salvos |
+| **Config** | botão grande **ATIVAR / DESLIGAR** a leitura, **RECUSA SOZINHO**, **ENSINAR ONDE FICA O X**, **1 · CUSTOS** (preço do litro, consumo, manutenção, comissão, aluguel, espera, retorno e metas) e **2 · CARD E CORES** (leitura automática, modo desktop, print, diagnóstico, duração na tela, posição, opacidade, fonte, empilhar, itens visíveis e limites do semáforo) |
+| **Histórico** | as corridas lidas, com print, endereços e médias |
+
+O status do serviço aparece na aba **Config**, embaixo dos comandos.
+
+## Calculadora do plantão (aba Home)
+
+É a conta do dia, separada da análise de cada oferta:
+
+```
+bruto    = 99 + Uber + inDrive + gorjetas/particular
+despesas = km × preço_litro ÷ consumo  +  km × reserva_manutenção  +  outros gastos
+saldo    = bruto − despesas            (o número grande do topo)
+R$/km    = saldo ÷ km
+R$/h     = saldo ÷ horas trabalhadas
+falta    = meta do dia − saldo         (com barra de progresso)
+```
+
+- **Modo ao vivo**: com *Ainda estou rodando* ligado, o tempo vai do começo até agora (atualiza a cada
+  30 s) e o R$/h acompanha o relógio. Sem ele, use **Começar agora**, **Agora** ou **Sincronizar término
+  agora** — os três usam o horário oficial de Brasília, não o fuso do aparelho.
+- **Plantão que virou a noite**: 22:00 → 02:30 conta como 4 h 30, nunca tempo negativo.
+- **Combustível**: Gasolina, Álcool e GNV guardam preço próprio; trocar de aba do combustível troca o preço
+  do campo. A reserva de manutenção vem em **R$ 0,25/km** (botões *Restaurar* e *Zerar*).
+- **Sem km** o app avisa e não calcula R$/km nem os gastos de combustível/manutenção.
+- **Salvar plantão** guarda o dia (bruto, despesas, km, horas e líquido) na lista *Plantões salvos* e zera
+  o dia para o próximo — preço do litro, consumo, reserva e meta continuam.
+- **O dia é do dia**: abrir o app num dia novo zera ganhos, km, horários e outros gastos; configuração do
+  carro e meta ficam. Tudo em `SharedPreferences`, sem servidor.
 
 ## Como usar
 
@@ -268,7 +294,7 @@ Requisitos: JDK 17, Android SDK 34 (o wrapper usa Gradle 9.6).
 
 ```bash
 ./gradlew :app:assembleRelease      # gera app/build/outputs/apk/release/app-release.apk
-./gradlew :app:testDebugUnitTest    # 128 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, recusa automática (só veredito RUIM de fábrica, critérios opcionais, escolha do X, contagem, X ensinado à mão por tela), valor do topo do card e 99 Motorista identificada pelo pacote
+./gradlew :app:testDebugUnitTest    # 156 testes: parser, duração ("1 h e 19 min"), cálculo da corrida, cálculo do plantão, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, abas Home/Config, recusa automática (só veredito RUIM de fábrica, critérios opcionais, escolha do X, contagem, X ensinado à mão por tela), valor do topo do card e 99 Motorista identificada pelo pacote
 ```
 
 Se o Android Studio estiver instalado, o JDK dele serve (`C:\Program Files\Android\Android Studio\jbr`);
@@ -304,6 +330,10 @@ uma versão. As regras operacionais estão no [AGENTS.md](AGENTS.md).
 | Corpo da release enviado como bytes sem charset | 422 nas 1.11 e 1.12 | UTF-8 explícito no `ChamarApi` |
 | `allowBackup="true"` no manifest | o backup do Android mandava as configurações e o histórico para a nuvem do Google | `allowBackup="false"` (1.23) |
 | Guardar cada APK no repositório (`dist/`) | 50 MB por versão, e o histórico do git não encolhe | APK só na release; `dist/` ignorado (1.23) |
+| Ler o tempo do card com uma regex de **minutos** (`(\d+) min … km`) | em `1 h e 19 min (71,7 km)` ela casava só o “19 min” do fim da frase: a corrida entrava com 19 min e o R$/h dava R$ 793/h | `Duracao.kt` lê a **frase inteira** antes do km (1.24) |
+| Deixar o campo do preço do litro vazio e gravar só o que o motorista digita | o primeiro dígito digitado em outro campo gravava preço 0 e o combustível sumia da conta | o campo é preenchido com o preço do combustível escolhido ao abrir a Home (1.24) |
+| Marcar o item da barra de abas de dentro do próprio callback da barra | `selectedItemId` reentrava no listener: `StackOverflowError` ao trocar de aba | guarda `trocandoAba` no `MainActivity` (1.24) |
+| `MaterialSwitch` (SwitchCompat) na tela do modo ao vivo | `NullPointerException` no `SwitchCompat.makeLayout` no Robolectric, derrubando 4 testes das abas | `Switch` do framework, com cores do tema (1.24) |
 
 ## Para quem for mexer no código
 

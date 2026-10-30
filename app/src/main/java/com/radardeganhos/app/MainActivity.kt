@@ -4,27 +4,111 @@ import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings as AndroidSettings
 import android.provider.Settings.Secure as SecureSettings
+import android.view.View
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 /**
- * Tela principal: liga/desliga a leitura de tela e abre as configurações.
+ * Tela principal com as três abas: Home (calculadora do plantão), Config (leitura de
+ * tela, recusa e ajustes) e Histórico (tela própria, com as corridas lidas).
  *
- * Tudo o que é configuração (custos, card, cores e leitura automática) mora nas
- * telas próprias; daqui só saem o botão único de leitura, os atalhos e o status.
+ * A calculadora mora no [HomeController]; aqui ficam só a troca de abas e os
+ * comandos da leitura de tela, que continuam iguais aos da versão anterior.
  */
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        const val EXTRA_ABA = "aba"
+        const val ABA_CONFIG = "config"
+        const val ABA_HOME = "home"
+    }
+
     private lateinit var tvStatus: TextView
+    private lateinit var bottomNav: BottomNavigationView
+
+    /** Verdadeiro enquanto a própria tela marca o item da barra de abas. */
+    private var trocandoAba = false
+    private val home by lazy { HomeController(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         tvStatus = findViewById(R.id.tvStatus)
+        bottomNav = findViewById(R.id.bottomNav)
 
+        home.bind()
+        ligarAbas()
+        ligarComandos()
+        mostrar(abaPedida())
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        intent?.let { setIntent(it) }
+        mostrar(abaPedida())
+    }
+
+    override fun onResume() {
+        super.onResume()
+        atualizarBotao()
+        atualizarRecusa()
+        home.refresh()
+        home.retomar()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        home.pausar()
+    }
+
+    /** Qual aba abrir: a que veio no Intent ou a Home. */
+    private fun abaPedida(): Aba =
+        if (intent?.getStringExtra(EXTRA_ABA) == ABA_CONFIG) Aba.CONFIG else Aba.HOME
+
+    private enum class Aba { HOME, CONFIG }
+
+    private fun ligarAbas() {
+        bottomNav.setOnItemSelectedListener { item ->
+            // `mostrar()` marca o item da barra, e marcar o item chama este listener de
+            // novo — sem esta guarda a troca de aba entrava em recursão infinita.
+            if (trocandoAba) return@setOnItemSelectedListener true
+            when (item.itemId) {
+                R.id.navConfig -> {
+                    mostrar(Aba.CONFIG)
+                    true
+                }
+                R.id.navInicio -> {
+                    mostrar(Aba.HOME)
+                    true
+                }
+                R.id.navHistorico -> {
+                    // Histórico é tela própria; volta para a aba em que estava.
+                    startActivity(Intent(this, HistoryActivity::class.java))
+                    false
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun mostrar(aba: Aba) {
+        trocandoAba = true
+        findViewById<View>(R.id.tabHome).visibility =
+            if (aba == Aba.HOME) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.tabConfig).visibility =
+            if (aba == Aba.CONFIG) View.VISIBLE else View.GONE
+        val item = if (aba == Aba.CONFIG) R.id.navConfig else R.id.navInicio
+        if (bottomNav.selectedItemId != item) bottomNav.selectedItemId = item
+        trocandoAba = false
+        if (aba == Aba.HOME) home.refresh()
+    }
+
+    // ---- comandos da leitura de tela -------------------------------------
+
+    private fun ligarComandos() {
         // Botão único: liga e desliga a leitura sem sair do app.
         findViewById<TextView>(R.id.btnToggleLeitura).setOnClickListener {
             val inst = RideAccessibilityService.instance
@@ -40,7 +124,7 @@ class MainActivity : AppCompatActivity() {
             atualizarBotao()
         }
 
-        // Custos do carro
+        // Custos do carro (usados no cálculo de cada corrida)
         findViewById<TextView>(R.id.btnCustos).setOnClickListener {
             startActivity(Intent(this, CustosActivity::class.java))
         }
@@ -61,27 +145,9 @@ class MainActivity : AppCompatActivity() {
 
         // Mira para ensinar onde fica o X de cada app (celular e 2ª tela).
         findViewById<TextView>(R.id.btnEnsinaX).setOnClickListener { ensinarX() }
-
-        // Bottom Navigation
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
-        bottomNav.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.navHistorico -> {
-                    startActivity(Intent(this, HistoryActivity::class.java))
-                    true
-                }
-                else -> true
-            }
-        }
     }
 
-    override fun onResume() {
-        super.onResume()
-        atualizarBotao()
-        atualizarRecusa()
-    }
-
-    /** Mostra no botão da tela principal se a recusa automática está ligada. */
+    /** Mostra no botão da configuração se a recusa automática está ligada. */
     private fun atualizarRecusa() {
         val btn = findViewById<TextView>(R.id.btnRecusa)
         val s = Prefs.load(this)
@@ -110,6 +176,7 @@ class MainActivity : AppCompatActivity() {
                 val inst = RideAccessibilityService.instance
                 if (inst == null || !inst.ativo) {
                     tvStatus.text = "Ative a leitura de tela antes de ensinar o X."
+                    mostrar(Aba.CONFIG)
                     return@setItems
                 }
                 val externo = escolha == 1
@@ -119,12 +186,14 @@ class MainActivity : AppCompatActivity() {
                     } else {
                         "Não consegui abrir a mira. Ative a leitura de tela e tente de novo."
                     }
+                    mostrar(Aba.CONFIG)
                 } else {
                     tvStatus.text = if (externo) {
                         "Arraste a mira até o X do $app e toque em SALVAR."
                     } else {
                         "Abra o $app: a mira aparece em 5 segundos."
                     }
+                    mostrar(Aba.CONFIG)
                 }
             }
             .setNegativeButton("Voltar", null)

@@ -13,8 +13,12 @@ líquidos da oferta do Uber/99. Também recusa oferta RUIM apertando o X do app 
 origem, com contagem regressiva.
 
 ```
-versão 1.23 · versionCode 24 · minSdk 30 · compileSdk/targetSdk 34 · JDK 17 · Gradle 9.6
+versão 1.24 · versionCode 25 · minSdk 30 · compileSdk/targetSdk 34 · JDK 17 · Gradle 9.6
 ```
+
+Desde a 1.24 o app abre numa **Home com a calculadora do plantão** (bruto por app, km,
+horas, custos, meta e saldo do dia) e tem três abas: Home, Config e Histórico. A leitura
+do card continua igual — a calculadora é do dia, não de uma oferta.
 
 ## Comandos
 
@@ -22,7 +26,8 @@ versão 1.23 · versionCode 24 · minSdk 30 · compileSdk/targetSdk 34 · JDK 17
 |---|---|
 | Publicar versão (fluxo do dono, Windows) | `.\publicar.cmd -Resumo "o que mudou"` |
 | Publicar sem token local (nuvem) | `git push origin HEAD:release` → workflow `.github/workflows/release.yml` |
-| Testes | `sh gradlew :app:testDebugUnitTest` (128 testes) |
+| Testes | `sh gradlew :app:testDebugUnitTest` (156 testes) |
+| Ver as telas sem instalar o APK | rode `TelasPngTest` e abra `app/build/screens/home.png` e `config.png` |
 | APK assinado | `sh gradlew :app:assembleRelease` → `app/build/outputs/apk/release/app-release.apk` |
 | Só o parser, sem Android SDK | `kotlinc RideParser.kt NumberParse.kt main.kt -include-runtime -d h.jar` |
 
@@ -65,6 +70,16 @@ os cards reais foram validados.
     encolhe. O APK fica na release do GitHub.
 12. **`lint.checkReleaseBuilds = false`** é proposital: o lintVital aborta o build em
     JDK 25. Não reative sem testar num JDK 25.
+13. **Tempo do card é lido por `Duracao`, nunca por regex solta de minutos.** "1 h e
+    19 min (71,7 km)" tem de valer 79 min: uma regex de `(\d+) min` casa só o "19"
+    do fim da frase e o R$/hora sai absurdo. Foi o bug da 1.23 → 1.24.
+14. **A Home é do dia e não pode perder configuração.** Preço do litro, consumo,
+    reserva e meta sobrevivem à virada do dia e ao *Salvar plantão*; o resto zera.
+    Todo campo que a tela mostra precisa ser preenchido ao abrir (`HomeController
+    .preencher`), senão o primeiro dígito digitado em outro campo grava zero nele.
+15. **Trocar de aba não marca item da barra dentro do callback da barra.** `mostrar()`
+    roda com a guarda `trocandoAba`; sem ela o `selectedItemId` reentra no listener e
+    estoura com `StackOverflowError`.
 
 ## Armadilhas do ambiente
 
@@ -77,6 +92,10 @@ os cards reais foram validados.
   release por aqui — o caminho é o workflow da branch `release`.
 - **Release pelo `publicar.ps1`**: notas de várias linhas vão por arquivo (`git commit
   -F`), nunca por `-m`; e `target_commitish` é a branch, nunca o SHA (422).
+- **`MaterialSwitch`/`SwitchCompat` no Robolectric**: medir um switch sem texto dá
+  `NullPointerException` em `SwitchCompat.makeLayout` e derruba os testes das abas. A
+  tela usa `Switch` do framework; o PNG das telas roda em `@GraphicsMode(NATIVE)` e
+  falha se a tela sair com menos de 20 cores (tela em branco).
 
 ## Mapa dos arquivos
 
@@ -90,11 +109,16 @@ os cards reais foram validados.
 | `Recortes.kt` | divide a 2ª tela nas janelas do Uber/99 |
 | `OverlayController.kt` | botão R$, card flutuante, mira do X |
 | `PanelBinder.kt` | preenche o card com o resultado |
-| `Calculator.kt` | custos, líquido, nota, mínimo |
+| `Calculator.kt` | custos, líquido, nota, mínimo de uma oferta |
+| `Duracao.kt` | tempo do card ("1 h e 19 min", "1h19") → minutos |
+| `Plantao.kt` | cálculo do dia (bruto, despesas, saldo, R$/km, R$/h, meta) + gravação |
+| `HomeController.kt` | aba Home: campos, chips, horários, meta, salvar plantão |
 | `ColorRules.kt` | semáforo de cor |
 | `Recusa.kt` | decide e clica no X |
 | `Settings.kt` | `Settings` (padrões) + `Prefs` (gravação e migração) |
 | `AutoScanPolicy.kt` | famílias de app e intervalos de leitura |
 | `RideHistory.kt` / `HistoryActivity.kt` | histórico e prints |
 | `AutoDiag.kt` | texto do diagnóstico na tela |
-| `MainActivity.kt` / `CardConfigActivity.kt` / `CustosActivity.kt` | telas |
+| `MainActivity.kt` | abas Home/Config/Histórico e comandos da leitura |
+| `tab_home.xml` / `tab_config.xml` | conteúdo das duas abas dentro do `activity_main.xml` |
+| `CardConfigActivity.kt` / `CustosActivity.kt` | telas de ajuste do card e dos custos da oferta |

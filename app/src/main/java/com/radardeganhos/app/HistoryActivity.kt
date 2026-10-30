@@ -15,6 +15,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.button.MaterialButton
 
 /**
@@ -38,7 +39,39 @@ class HistoryActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btnVoltar).setOnClickListener { finish() }
         findViewById<TextView>(R.id.btnLimparHistorico).setOnClickListener { confirmarLimpeza() }
 
+        ligarAbas()
         carregar()
+    }
+
+    /** A barra de baixo continua aqui: Histórico é uma das três abas. */
+    private fun ligarAbas() {
+        val nav = findViewById<BottomNavigationView>(R.id.bottomNav)
+        nav.selectedItemId = R.id.navHistorico
+        nav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.navInicio -> {
+                    abrirAba(MainActivity.ABA_HOME)
+                    true
+                }
+                R.id.navConfig -> {
+                    abrirAba(MainActivity.ABA_CONFIG)
+                    true
+                }
+                else -> true
+            }
+        }
+    }
+
+    /**
+     * Volta para a tela principal na aba pedida. CLEAR_TOP reaproveita o MainActivity
+     * que já está na pilha (o histórico sai da frente em vez de empilhar outra tela).
+     */
+    private fun abrirAba(aba: String) {
+        startActivity(
+            Intent(this, MainActivity::class.java)
+                .putExtra(MainActivity.EXTRA_ABA, aba)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        )
     }
 
     override fun onResume() {

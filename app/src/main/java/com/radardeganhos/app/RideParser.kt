@@ -43,18 +43,8 @@ object RideParser {
     private val moneyRegex = Regex(MONEY)
     private val taxaRegex = Regex("""taxa\s+de\s+deslocamento[^0-9]{0,16}(?:r\$|rs\.?)\s*(\d+(?:[.,]\d{1,2})?)""")
 
-    // Entre o tempo e o km o card da 99 põe um ponto ("5min • 2,3km"): sem aceitar
-    // o separador o par não casava e a conta saía com o km de um lado e o tempo do outro.
-    private val sepPar = """[•·:\-–—]?\s*"""
-
-    private val pairHM = Regex("""(\d+)\s*h\s*(?:e\s*)?(\d{1,2})\s*min\.?\s*$sepPar[\(\[]?\s*(\d+(?:[.,]\d+)?)\s*km""")
-    private val pairH = Regex("""(\d+)\s*h\s*[\(\[]?\s*(\d+(?:[.,]\d+)?)\s*km""")
-
-    /** "1h19 (71,7 km)": o app escreve "min", mas o OCR pode comer a palavra. */
-    private val pairHMinSemMin = Regex("""(\d+)\s*h\s*(\d{1,2})\s*[\(\[]?\s*(\d+(?:[.,]\d+)?)\s*km""")
-    private val pairMin = Regex("""(\d+)\s*min\.?\s*$sepPar\(?(\d+(?:[.,]\d+)?)\s*km""")
+    /** Tempo em minutos antes do km — lido pela classe [Duracao] (ver `findPairs`). */
     private val pairMinMeters = Regex("""(\d+)\s*min\s*\(?\s*(\d{2,5})\s*m\b""")
-    private val pairKmMin = Regex("""(\d+(?:[.,]\d+)?)\s*km[^0-9]{0,12}?(\d+)\s*min""")
 
     private val anyKm = Regex("""(\d+(?:[.,]\d+)?)\s*km\b""")
     private val anyMin = Regex("""(\d+)\s*min\b""")
@@ -691,37 +681,23 @@ object RideParser {
             found.add(Par(idx, min, km))
         }
 
-        pairHM.findAll(text).forEach { m ->
-            val h = m.groupValues[1].toDoubleOrNull() ?: 0.0
-            val mi = m.groupValues[2].toDoubleOrNull() ?: 0.0
-            val km = NumberParse.toDouble(m.groupValues[3]) ?: return@forEach
-            add(m.range.first, h * 60 + mi, km)
-        }
-        pairH.findAll(text).forEach { m ->
-            val h = m.groupValues[1].toDoubleOrNull() ?: 0.0
-            val km = NumberParse.toDouble(m.groupValues[2]) ?: return@forEach
-            add(m.range.first, h * 60, km)
-        }
-        pairHMinSemMin.findAll(text).forEach { m ->
-            val h = m.groupValues[1].toDoubleOrNull() ?: 0.0
-            val mi = m.groupValues[2].toDoubleOrNull() ?: 0.0
-            val km = NumberParse.toDouble(m.groupValues[3]) ?: return@forEach
-            add(m.range.first, h * 60 + mi, km)
-        }
-        pairMin.findAll(text).forEach { m ->
-            val mi = m.groupValues[1].toDoubleOrNull() ?: 0.0
-            val km = NumberParse.toDouble(m.groupValues[2]) ?: return@forEach
-            add(m.range.first, mi, km)
-        }
-        pairMinMeters.findAll(text).forEach { m ->
-            val mi = m.groupValues[1].toDoubleOrNull() ?: 0.0
-            val mts = m.groupValues[2].toDoubleOrNull() ?: return@forEach
-            if (mts >= 100) add(m.range.first, mi, mts / 1000.0)
-        }
-        pairKmMin.findAll(text).forEach { m ->
+        // Cada "km" da tela fecha um trecho, e o tempo é o que está escrito antes dele.
+        // Quem lê o tempo é a classe `Duracao`, que pega a frase inteira: é isso que faz
+        // "1 h e 19 min (71,7 km)" valer 79 min. Antes, uma regex de minutos casava só o
+        // "19 min" do fim da frase e a corrida entrava na conta com 19 min de duração.
+        anyKm.findAll(text).forEach { m ->
             val km = NumberParse.toDouble(m.groupValues[1]) ?: return@forEach
-            val mi = m.groupValues[2].toDoubleOrNull() ?: 0.0
-            add(m.range.first, mi, km)
+            val min = Duracao.minutosAntesDe(text, m.range.first)
+                ?: Duracao.minutosDepoisDe(text, m.range.last + 1)
+                ?: return@forEach
+            add(m.range.first, min, km)
+        }
+        // Trecho curto em metros: "4 min (300 m)".
+        pairMinMeters.findAll(text).forEach { m ->
+            val mts = m.groupValues[2].toDoubleOrNull() ?: return@forEach
+            if (mts < 100) return@forEach
+            val min = Duracao.minutosAntesDe(text, m.range.first) ?: return@forEach
+            add(m.range.first, min, mts / 1000.0)
         }
 
         return found.sortedBy { it.idx }
