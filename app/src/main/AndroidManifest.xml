@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- allowBackup=false: o README promete que nada sai do aparelho, e o backup do
+         Android manda as SharedPreferences (custos, histórico, mínimos) para a nuvem
+         do Google. Com true, a promessa era falsa. -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
@@ -36,8 +39,6 @@
             android:exported="false"
             android:label="Card flutuante"
             android:parentActivityName=".MainActivity" />
-
-
 
         <service
             android:name=".RideAccessibilityService"

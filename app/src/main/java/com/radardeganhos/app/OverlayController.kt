@@ -703,8 +703,6 @@ class OverlayController(
         calibracaoJanela = janelaDoApp
     }
 
-    fun estaCalibrando(): Boolean = calibracao != null
-
     fun cancelarCalibracao() {
         fecharCalibracao()
     }

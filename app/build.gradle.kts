@@ -51,9 +51,10 @@ android {
         unitTests.isIncludeAndroidResources = true
     }
 
-    // O lintVital do release quebra em JDK 25 (mÃƒÆ’Ã‚Â¡quina toda em Java 25): ele aborta
-    // o build com a prÃƒÆ’Ã‚Â³pria string de versÃƒÆ’Ã‚Â£o como erro. O lint continua disponÃƒÆ’Ã‚Â­vel
-    // manualmente pelo menu do Android Studio quando quiser.
+    // O lintVital do release aborta o build quando o projeto é compilado em JDK 25
+    // (a máquina do motorista estava toda em Java 25): ele falha apontando a própria
+    // string de versão. O lint continua disponível pelo menu do Android Studio.
+    // Não reative checkReleaseBuilds sem testar o build num JDK 25.
     lint {
         checkReleaseBuilds = false
         abortOnError = false
@@ -68,14 +69,13 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     // OCR offline (modelo embarcado, nao usa internet nem Play Services)
     implementation("com.google.mlkit:text-recognition:16.0.0")
 
     testImplementation("junit:junit:4.13.2")
-    // 4.17: ASM novo o suficiente para ler classes do JDK 25 (maior 69) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â o 4.12.2
+    // 4.17: ASM novo o suficiente para ler classes do JDK 25 (major 69) — o 4.12.2
     // quebra com "Unsupported class file major version 69" em todo teste Robolectric.
     testImplementation("org.robolectric:robolectric:4.17")
     testImplementation("androidx.test:core:1.5.0")

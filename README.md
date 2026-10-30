@@ -6,7 +6,7 @@ App Android que lê o card de corrida do **Uber** e da **99** em qualquer tela (
 
 ```
 pacote: com.radardeganhos.app
-versão: 1.19 (versionCode 20)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
+versão: 1.23 (versionCode 24)   ·   Android 11+ (API 30)   ·   assinado (esquema v2)
 ```
 
 O APK sai do próprio Android Studio (aba **Build › Build App Bundle(s) / APK(s) › Build APK(s)**)
@@ -23,7 +23,10 @@ Um comando compila e publica (use `-Simulacao` para ver o plano sem alterar nada
 
 O script soma 1 no `versionCode`, atualiza o `versionName`, gera o APK assinado em `dist/`,
 commita, faz push, cria a tag `v<versão>`, abre a release no GitHub e anexa o APK.
-Em `dist/` fica só o APK da versão atual; os anteriores continuam nas releases do GitHub.
+O APK fica **na release**, não no repositório: `dist/` é ignorado pelo git desde a 1.23
+(eram 50 MB por versão e o histórico do git não encolhe depois). Para publicar sem o
+token da máquina, empurre a branch `release` — o workflow do GitHub Actions compila e
+cria a release sozinho.
 
 | Opção | Para quê |
 |---|---|
@@ -265,7 +268,7 @@ Requisitos: JDK 17, Android SDK 34 (o wrapper usa Gradle 9.6).
 
 ```bash
 ./gradlew :app:assembleRelease      # gera app/build/outputs/apk/release/app-release.apk
-./gradlew :app:testDebugUnitTest    # 127 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, recusa automática (só veredito RUIM de fábrica, critérios opcionais, escolha do X, contagem, X ensinado à mão por tela), valor do topo do card e 99 Motorista identificada pelo pacote
+./gradlew :app:testDebugUnitTest    # 128 testes: parser, cálculo, card, toggles, cores, endereços, histórico, prints, modo desktop, divisão da 2ª tela, auto-análise, área lida, padrões e migração, inflação das telas, recusa automática (só veredito RUIM de fábrica, critérios opcionais, escolha do X, contagem, X ensinado à mão por tela), valor do topo do card e 99 Motorista identificada pelo pacote
 ```
 
 Se o Android Studio estiver instalado, o JDK dele serve (`C:\Program Files\Android\Android Studio\jbr`);
@@ -273,6 +276,40 @@ na linha de comando use `-Dorg.gradle.java.home=/caminho/do/jdk17`.
 
 Assinatura: `keystore/radar.jks`, alias `radar`, senha `radar2026` (definida em `app/build.gradle.kts`).
 Mantenha o mesmo keystore para atualizar o app no celular sem desinstalar.
+
+## O que já foi tentado e não funcionou
+
+Cada item aqui é uma tentativa real que foi **desfeita** (ou limitada) porque piorou
+alguma coisa. Se for mexer no código, leia antes: são as armadilhas que já custaram
+uma versão. As regras operacionais estão no [AGENTS.md](AGENTS.md).
+
+| Tentativa | Por que não ficou | O que ficou no lugar |
+|---|---|---|
+| Ler a tela inteira no OCR | o saldo e o menu do app viravam o valor da corrida | leitura começa abaixo do card (`AreaLeitura`, 1.8) |
+| Usar o **maior R$** da tela como valor | a 99 mostra ofertas alternativas embaixo e o maior delas tomava o lugar | primeiro R$ do card (1.16) e hoje o primeiro R$ **que não é anotação** (1.23) |
+| Deixar o texto do card ir até o fim da tela | “Tentando encontrar (2s)” e as ofertas alternativas entravam no endereço/valor | corte no botão de aceitar (1.23) |
+| Palavra de parada só no singular | o endereço de busca saía como “…São Leopoldo, 2 paradas” | `(?:s\|es)?` e lista maior de palavras (1.23) |
+| Mínimos de recusa iguais ao vermelho do semáforo (35/h e 1,30/km) | recusava corrida BOA/MÉDIA — a reclamação de “recusou corrida boa” | recusa só no veredito RUIM, mínimos em 0 (1.16) + migração em `Prefs` |
+| “Só avisar” como padrão da recusa | a contagem terminava sem clicar e parecia que a função não funcionava | clicar por padrão, com contagem para cancelar (1.14) |
+| Piso de leitura de R$/h ≥ 25 e R$/km ≥ 1 | descartava o 99 Envíos Carro de R$ 10,03, que é card legítimo | piso no próprio card: R$ 0,59/km e R$ 20,75/h (1.23) |
+| Retry automático quando não achava card (1.21/1.22) | travava a leitura do serviço | removido em `ca4b471` |
+| Recortar a 2ª tela sem exigir pacote de corrida | a moldura do Smart Connect gerava um card falso na metade sem oferta | recorte só com pacote Uber/99 conhecido (1.12) |
+| Usar a 2ª tela sempre que o modo desktop estava ligado | parou de ler o celular — regressão da 1.11 | 2ª tela só quando há app de corrida nela (1.12) |
+| Scripts Lua remotos por app, como o GigU faz | exigiria servidor (quebra “nada sai do aparelho”), executaria código de fora dentro do `AccessibilityService` e pararia de funcionar offline | só a ideia do gatilho/âncora do card, em Kotlin (1.23) |
+| Robolectric 4.12.2 | “Unsupported class file major version 69” em todo teste, com JDK 25 | Robolectric 4.17 |
+| Robolectric em `@Config(sdk = [33])` | `NoClassDefFoundError: BluetoothDevice$BluetoothAddress` ao abrir a tela de configurações | toda a suíte em API 34 (1.23) |
+| `lintVital` no build de release | aborta o build em JDK 25 apontando a própria string de versão | `lint.checkReleaseBuilds = false`, documentado |
+| Commit com notas de várias linhas por `git commit -m` no PowerShell | o PowerShell quebrava os argumentos e o commit falhava (1.11) | `git commit -F arquivo` no `publicar.ps1` |
+| Release com `target_commitish` = SHA | GitHub devolve 422 quando a tag já existe | usar a branch como alvo |
+| Corpo da release enviado como bytes sem charset | 422 nas 1.11 e 1.12 | UTF-8 explícito no `ChamarApi` |
+| `allowBackup="true"` no manifest | o backup do Android mandava as configurações e o histórico para a nuvem do Google | `allowBackup="false"` (1.23) |
+| Guardar cada APK no repositório (`dist/`) | 50 MB por versão, e o histórico do git não encolhe | APK só na release; `dist/` ignorado (1.23) |
+
+## Para quem for mexer no código
+
+O [AGENTS.md](AGENTS.md) tem os comandos (inclusive rodar o parser sem Android SDK),
+as regras que não podem ser desfeitas, as armadilhas do ambiente (Robolectric, JDK 25,
+release pela nuvem) e o mapa dos arquivos. Comece por ele.
 
 ## Limites conhecidos
 

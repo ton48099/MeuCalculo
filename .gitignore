@@ -6,10 +6,8 @@ local.properties
 *.iml
 captures/
 
-# So o APK da versao atual vai para o repositorio (os antigos ficam locais)
-dist/RadarDeGanhos-1.0.apk
-dist/RadarDeGanhos-1.1.apk
-dist/RadarDeGanhos-1.2.apk
-dist/RadarDeGanhos-1.7.apk
-dist/RadarDeGanhos-1.8.apk
-dist/RadarDeGanhos-1.15.apk
+# O APK de cada versao fica na release do GitHub (e em app/build/outputs/apk/release
+# depois de compilar). O publicar.ps1 ainda copia o APK para dist/ para instalar no
+# celular, mas ele nao entra no repositorio: eram 50 MB por versao e o historico do
+# git nao encolhe depois.
+dist/
